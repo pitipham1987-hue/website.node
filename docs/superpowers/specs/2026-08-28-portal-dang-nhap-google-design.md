@@ -1,8 +1,8 @@
 # Thiết kế: Client Portal + đăng nhập Google (DNK House)
 
 - **Ngày:** 2026-08-28
-- **Trạng thái:** Đã duyệt thiết kế, chờ viết plan
-- **Phạm vi tài liệu này:** Giai đoạn 1 (auth + mô hình dữ liệu + dashboard khách hàng). Giai đoạn 2 (admin UI) có spec + plan riêng sau này.
+- **Trạng thái:** Đã duyệt thiết kế. Triển khai qua 4 spec slice riêng (xem mục 9).
+- **Vai trò tài liệu này:** tham chiếu kiến trúc chung cho Giai đoạn 1 (auth + mô hình dữ liệu + dashboard khách hàng). 4 spec slice trong mục 9 là nguồn sự thật để viết plan. Giai đoạn 2 (admin UI) có spec riêng sau này.
 
 ## 1. Bối cảnh & mục tiêu
 
@@ -372,59 +372,14 @@ test và ship được; không để lại code chết. Mỗi slice kết thúc 
 `npx tsc --noEmit` + `npm run lint` sạch, và (từ slice 2) kiểm tra responsive ở
 375 / 768 / 1440.
 
-### Slice 1 — Hạ tầng Supabase + schema + RLS
+**Mỗi slice có spec riêng** (nguồn sự thật cho việc viết plan); tài liệu này là tham chiếu
+kiến trúc chung mà 4 spec đó trỏ về.
 
-Chưa có route portal nào hoạt động.
+| Slice | Spec | Kết quả khi xong |
+|-------|------|------------------|
+| 1 | [portal-slice-1-ha-tang-supabase-rls](./2026-08-28-portal-slice-1-ha-tang-supabase-rls-design.md) | Schema + RLS + client Supabase + test integration RLS. Chưa có route. |
+| 2 | [portal-slice-2-dang-nhap-bao-ve-route](./2026-08-28-portal-slice-2-dang-nhap-bao-ve-route-design.md) | Đăng nhập/đăng xuất Google, proxy + DAL, màn hình `pending`. |
+| 3 | [portal-slice-3-dashboard-danh-sach-du-an](./2026-08-28-portal-slice-3-dashboard-danh-sach-du-an-design.md) | `/portal` liệt kê dự án của khách + % milestone. |
+| 4 | [portal-slice-4-chi-tiet-du-an](./2026-08-28-portal-slice-4-chi-tiet-du-an-design.md) | `/portal/[projectId]`: milestone checklist + nhật ký cập nhật. |
 
-- Thêm deps: `@supabase/supabase-js`, `@supabase/ssr`; dev: `vitest`, `@playwright/test`.
-- `.env.local.example` (liệt kê 3 biến Supabase); `.gitignore` thêm `!.env.local.example`.
-- `supabase/config.toml`; `supabase/migrations/*.sql`: 5 bảng (mục 3.1), 2 hàm (3.2),
-  4 trigger (3.3), toàn bộ RLS policy (3.4); `supabase/seed.sql` (3.6).
-- `src/lib/supabase/server.ts`, `client.ts`, `middleware.ts` (`updateSession`).
-- Cấu hình Vitest; `tests/integration/rls.test.ts` — toàn bộ mục 5.2.
-- `package.json` scripts: `test` → `vitest run`, `test:e2e` → `playwright test`.
-- CLAUDE.md: mục Commands (thêm `test`, `test:e2e`, ghi chú cần `supabase start`/Docker)
-  + danh sách biến môi trường.
-- **Xác minh:** `supabase start` → `npm run test` (RLS pass); `npm run build` xanh;
-  trang `/` không đổi hành vi.
-
-### Slice 2 — Vòng đăng nhập/đăng xuất + bảo vệ route
-
-- `src/app/login/page.tsx` + `src/components/portal/LoginButton.tsx` (`"use client"`).
-- `src/app/auth/callback/route.ts` (`exchangeCodeForSession` → redirect).
-- `src/proxy.ts` (redirect lạc quan theo cookie + `updateSession`, `matcher` bỏ asset).
-- `src/lib/portal/session.ts`: `getSessionProfile()` (React.cache), `requireClient()`
-  (trả `{ profile, status: 'ok' | 'pending' }`).
-- `src/lib/portal/actions.ts`: `signOut()` (`"use server"`).
-- `src/app/portal/layout.tsx` (thanh trên: logo + tên + "Đăng xuất").
-- `src/app/portal/page.tsx` tối giản: `status === 'pending'` → `<PendingNotice />`;
-  ngược lại → lời chào tạm (danh sách dự án đầy đủ ở Slice 3).
-- `src/components/portal/PendingNotice.tsx`.
-- `tests/unit/session.test.ts`: nhánh `requireClient` (null / pending / client / admin),
-  map `role` → màn hình.
-- `tests/e2e/auth.spec.ts`: kịch bản 3, 4, 5 (mục 5.3).
-- **Xác minh:** E2E pass; đăng nhập Google thật ở dev 1 lần; responsive `/login` +
-  `/portal`.
-
-### Slice 3 — Dashboard danh sách dự án
-
-- `src/lib/portal/progress.ts` (hoặc tương đương): hàm thuần tính `%` từ `{ done, total }`
-  (xử lý `total = 0`).
-- `src/lib/portal/queries.ts`: `getProjectsForUser()` (dự án + đếm milestone done/tổng).
-- `src/app/portal/page.tsx` đầy đủ: danh sách `<ProjectCard />` + trạng thái trống lịch sự.
-- `src/components/portal/ProjectCard.tsx` (link tới `/portal/[projectId]`).
-- `tests/unit/progress.test.ts`.
-- `tests/e2e/dashboard.spec.ts`: kịch bản 1 (mục 5.3).
-- **Xác minh:** E2E; responsive.
-
-### Slice 4 — Chi tiết dự án (milestone + nhật ký)
-
-- `src/lib/portal/session.ts`: thêm `requireProjectAccess(projectId)` → `notFound()` khi
-  không có quyền.
-- `src/lib/portal/queries.ts`: `getProjectDetail(projectId)` (dự án + milestones theo
-  `position` + updates theo `created_at` desc).
-- `src/app/portal/[projectId]/page.tsx` + `src/app/portal/error.tsx`.
-- `src/components/portal/MilestoneList.tsx`, `src/components/portal/UpdatesFeed.tsx`.
-- `tests/e2e/project-detail.spec.ts`: kịch bản 2 (mục 5.3).
-- CLAUDE.md: bổ sung mục kiến trúc "Portal" (route, DAL, RLS, proxy).
-- **Xác minh:** E2E; responsive 3 breakpoint; toàn bộ `npm run test` + `test:e2e` xanh.
+Mỗi slice đi qua chu kỳ spec → plan → thực thi riêng.
