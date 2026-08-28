@@ -86,9 +86,10 @@ Không thêm ORM. Truy vấn qua Supabase client. Không thêm thư viện quả
 - `requireClient()` — gọi `getSessionProfile()`; `null` → `redirect('/login')`;
   `role = 'pending'` → không redirect, trả cờ để page render `PendingNotice`.
   (Chi tiết: trả `{ profile, status: 'ok' | 'pending' }`.)
-- `requireAdmin()` — `role !== 'admin'` → `notFound()`.
 - `requireProjectAccess(projectId)` — kiểm tra qua truy vấn (RLS tự lọc); không có
   quyền → `notFound()`.
+- `requireAdmin()` — **dời sang Giai đoạn 2** (cùng `/portal/admin`). Giai đoạn 1 không
+  có route/action nào cần, thêm sớm sẽ là code chết.
 
 Mọi page trong `/portal` và mọi Server Action **phải** gọi hàm DAL tương ứng. **Không**
 đặt auth check trong `layout.tsx` (layout không re-render khi điều hướng client-side).
@@ -184,6 +185,9 @@ Tất cả bảng thuộc schema `public`. Bật RLS cho mọi bảng.
 | `project_members` | `profile_id = auth.uid()` OR `is_admin()` | chỉ `is_admin()` |
 | `milestones` | `is_project_member(project_id)` OR `is_admin()` | chỉ `is_admin()` |
 | `updates` | `is_project_member(project_id)` OR `is_admin()` | chỉ `is_admin()` |
+
+Hàm `is_admin()` vẫn được tạo và dùng trong policy ngay từ Giai đoạn 1 (để chặn ghi từ
+token client). Chỉ helper DAL `requireAdmin()` phía Next là dời sang Giai đoạn 2.
 
 **Hệ quả:** client A gọi Supabase bằng token của mình không bao giờ đọc/ghi được dữ liệu
 dự án của client B — database từ chối, độc lập với bug ở tầng code.
@@ -326,7 +330,7 @@ src/
       client.ts
       middleware.ts                     # updateSession cho proxy
     portal/
-      session.ts                        # DAL: getSessionProfile, requireClient, requireAdmin, requireProjectAccess
+      session.ts                        # DAL: getSessionProfile, requireClient, requireProjectAccess (requireAdmin: Giai đoạn 2)
       queries.ts
       actions.ts                        # signOut
   components/portal/
@@ -360,3 +364,67 @@ môi trường), `.gitignore` (hiện bỏ qua `.env*` — thêm dòng `!.env.lo
   plan cần thêm bước cấu hình.
 - **Trigger trên `auth.users`:** cần quyền phù hợp; nếu Supabase hạn chế, fallback là
   tạo `profiles` từ callback bằng service role key (upsert khi chưa có).
+
+## 9. Phân rã triển khai (slices)
+
+Giai đoạn 1 chia thành **4 slice dọc, tuần tự** (1 → 2 → 3 → 4). Mỗi slice tự build, tự
+test và ship được; không để lại code chết. Mỗi slice kết thúc bằng: `npm run build` +
+`npx tsc --noEmit` + `npm run lint` sạch, và (từ slice 2) kiểm tra responsive ở
+375 / 768 / 1440.
+
+### Slice 1 — Hạ tầng Supabase + schema + RLS
+
+Chưa có route portal nào hoạt động.
+
+- Thêm deps: `@supabase/supabase-js`, `@supabase/ssr`; dev: `vitest`, `@playwright/test`.
+- `.env.local.example` (liệt kê 3 biến Supabase); `.gitignore` thêm `!.env.local.example`.
+- `supabase/config.toml`; `supabase/migrations/*.sql`: 5 bảng (mục 3.1), 2 hàm (3.2),
+  4 trigger (3.3), toàn bộ RLS policy (3.4); `supabase/seed.sql` (3.6).
+- `src/lib/supabase/server.ts`, `client.ts`, `middleware.ts` (`updateSession`).
+- Cấu hình Vitest; `tests/integration/rls.test.ts` — toàn bộ mục 5.2.
+- `package.json` scripts: `test` → `vitest run`, `test:e2e` → `playwright test`.
+- CLAUDE.md: mục Commands (thêm `test`, `test:e2e`, ghi chú cần `supabase start`/Docker)
+  + danh sách biến môi trường.
+- **Xác minh:** `supabase start` → `npm run test` (RLS pass); `npm run build` xanh;
+  trang `/` không đổi hành vi.
+
+### Slice 2 — Vòng đăng nhập/đăng xuất + bảo vệ route
+
+- `src/app/login/page.tsx` + `src/components/portal/LoginButton.tsx` (`"use client"`).
+- `src/app/auth/callback/route.ts` (`exchangeCodeForSession` → redirect).
+- `src/proxy.ts` (redirect lạc quan theo cookie + `updateSession`, `matcher` bỏ asset).
+- `src/lib/portal/session.ts`: `getSessionProfile()` (React.cache), `requireClient()`
+  (trả `{ profile, status: 'ok' | 'pending' }`).
+- `src/lib/portal/actions.ts`: `signOut()` (`"use server"`).
+- `src/app/portal/layout.tsx` (thanh trên: logo + tên + "Đăng xuất").
+- `src/app/portal/page.tsx` tối giản: `status === 'pending'` → `<PendingNotice />`;
+  ngược lại → lời chào tạm (danh sách dự án đầy đủ ở Slice 3).
+- `src/components/portal/PendingNotice.tsx`.
+- `tests/unit/session.test.ts`: nhánh `requireClient` (null / pending / client / admin),
+  map `role` → màn hình.
+- `tests/e2e/auth.spec.ts`: kịch bản 3, 4, 5 (mục 5.3).
+- **Xác minh:** E2E pass; đăng nhập Google thật ở dev 1 lần; responsive `/login` +
+  `/portal`.
+
+### Slice 3 — Dashboard danh sách dự án
+
+- `src/lib/portal/progress.ts` (hoặc tương đương): hàm thuần tính `%` từ `{ done, total }`
+  (xử lý `total = 0`).
+- `src/lib/portal/queries.ts`: `getProjectsForUser()` (dự án + đếm milestone done/tổng).
+- `src/app/portal/page.tsx` đầy đủ: danh sách `<ProjectCard />` + trạng thái trống lịch sự.
+- `src/components/portal/ProjectCard.tsx` (link tới `/portal/[projectId]`).
+- `tests/unit/progress.test.ts`.
+- `tests/e2e/dashboard.spec.ts`: kịch bản 1 (mục 5.3).
+- **Xác minh:** E2E; responsive.
+
+### Slice 4 — Chi tiết dự án (milestone + nhật ký)
+
+- `src/lib/portal/session.ts`: thêm `requireProjectAccess(projectId)` → `notFound()` khi
+  không có quyền.
+- `src/lib/portal/queries.ts`: `getProjectDetail(projectId)` (dự án + milestones theo
+  `position` + updates theo `created_at` desc).
+- `src/app/portal/[projectId]/page.tsx` + `src/app/portal/error.tsx`.
+- `src/components/portal/MilestoneList.tsx`, `src/components/portal/UpdatesFeed.tsx`.
+- `tests/e2e/project-detail.spec.ts`: kịch bản 2 (mục 5.3).
+- CLAUDE.md: bổ sung mục kiến trúc "Portal" (route, DAL, RLS, proxy).
+- **Xác minh:** E2E; responsive 3 breakpoint; toàn bộ `npm run test` + `test:e2e` xanh.
