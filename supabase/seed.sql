@@ -7,24 +7,29 @@
 insert into auth.users
   (instance_id, id, aud, role, email, encrypted_password,
    email_confirmed_at, created_at, updated_at,
-   raw_app_meta_data, raw_user_meta_data)
+   raw_app_meta_data, raw_user_meta_data,
+   confirmation_token, recovery_token, email_change, email_change_token_new)
 values
   ('00000000-0000-0000-0000-000000000000', '11111111-1111-1111-1111-111111111111',
    'authenticated', 'authenticated', 'admin@dnkhouse.test', crypt('portal-dev-123', gen_salt('bf')),
    now(), now(), now(),
-   '{"provider":"email","providers":["email"]}', '{"full_name":"DNK Admin"}'),
+   '{"provider":"email","providers":["email"]}', '{"full_name":"DNK Admin"}',
+   '', '', '', ''),
   ('00000000-0000-0000-0000-000000000000', '22222222-2222-2222-2222-222222222222',
    'authenticated', 'authenticated', 'client-a@dnkhouse.test', crypt('portal-dev-123', gen_salt('bf')),
    now(), now(), now(),
-   '{"provider":"email","providers":["email"]}', '{"full_name":"Khách A"}'),
+   '{"provider":"email","providers":["email"]}', '{"full_name":"Khách A"}',
+   '', '', '', ''),
   ('00000000-0000-0000-0000-000000000000', '33333333-3333-3333-3333-333333333333',
    'authenticated', 'authenticated', 'client-b@dnkhouse.test', crypt('portal-dev-123', gen_salt('bf')),
    now(), now(), now(),
-   '{"provider":"email","providers":["email"]}', '{"full_name":"Khách B"}'),
+   '{"provider":"email","providers":["email"]}', '{"full_name":"Khách B"}',
+   '', '', '', ''),
   ('00000000-0000-0000-0000-000000000000', '44444444-4444-4444-4444-444444444444',
    'authenticated', 'authenticated', 'pending@dnkhouse.test', crypt('portal-dev-123', gen_salt('bf')),
    now(), now(), now(),
-   '{"provider":"email","providers":["email"]}', '{"full_name":"Khách chờ duyệt"}');
+   '{"provider":"email","providers":["email"]}', '{"full_name":"Khách chờ duyệt"}',
+   '', '', '', '');
 
 insert into auth.identities
   (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
