@@ -43,6 +43,8 @@
 | File | Thay đổi |
 |------|----------|
 | `src/app/portal/page.tsx` | Thay lời chào tạm (Slice 2) bằng: `pending` → `PendingNotice`; `ok` → danh sách `ProjectCard` hoặc thông báo trống |
+| `supabase/seed.sql` | Thêm persona `client-c@dnkhouse.test` (role `client`, không có dự án) — dùng test màn thông báo trống |
+| `tests/e2e/helpers.ts` | `EMAILS` thêm `clientB`, `clientC` |
 
 ---
 
@@ -382,12 +384,47 @@ git commit -m "feat(portal): /portal liệt kê dự án của khách + thông b
 
 **Files:**
 - Tạo mới: `tests/e2e/dashboard.spec.ts`
-- Chỉnh sửa: `tests/e2e/helpers.ts` (thêm email `clientB`)
+- Chỉnh sửa: `tests/e2e/helpers.ts` (thêm email `clientB`, `clientC`)
+- Chỉnh sửa: `supabase/seed.sql` (thêm user `client-c@dnkhouse.test` — role `client`, không có dự án)
 
 **Interfaces:**
-- Consumes: `loginAs`, `EMAILS` (Slice 2), seed data.
+- Consumes: `loginAs`, `EMAILS` (Slice 2), seed data (Slice 1).
+- Cung cấp: seed user `client-c@dnkhouse.test` / `portal-dev-123`, id `55555555-5555-5555-5555-555555555555`, `role = 'client'`, **không** có dòng `project_members` nào — persona cố định để test màn "thông báo trống" (Slice này và các slice sau có thể tái dùng, không cần tạo thêm).
 
-- [ ] **Bước 1: Thêm `clientB` vào `tests/e2e/helpers.ts`**
+- [ ] **Bước 1: Thêm user `client-c` vào `supabase/seed.sql`**
+
+Trong khối `insert into auth.users (...) values (...)` (Slice 1, Task 5), thêm 1 dòng vào cuối danh sách `values` (nhớ đổi dấu `;` ở dòng trước thành `,`):
+
+```sql
+  ('00000000-0000-0000-0000-000000000000', '55555555-5555-5555-5555-555555555555',
+   'authenticated', 'authenticated', 'client-c@dnkhouse.test', crypt('portal-dev-123', gen_salt('bf')),
+   now(), now(), now(),
+   '{"provider":"email","providers":["email"]}', '{"full_name":"Khách C"}');
+```
+
+Tương tự thêm 1 dòng vào khối `insert into auth.identities (...) values (...)`:
+
+```sql
+  (gen_random_uuid(), '55555555-5555-5555-5555-555555555555', '55555555-5555-5555-5555-555555555555',
+   '{"sub":"55555555-5555-5555-5555-555555555555","email":"client-c@dnkhouse.test"}', 'email', now(), now(), now());
+```
+
+Ngay sau khối `-- ============ Set role (...)`, thêm dòng:
+
+```sql
+update public.profiles set role = 'client' where id = '55555555-5555-5555-5555-555555555555';
+-- client-c cố ý KHÔNG có dòng project_members nào (dùng test màn "thông báo trống").
+```
+
+- [ ] **Bước 2: Xác minh seed áp lại sạch**
+
+```bash
+npx supabase db reset
+```
+
+Kỳ vọng: không lỗi. `profiles` giờ có 5 dòng (`admin`, `client-a`, `client-b`, `client-c`, `pending`).
+
+- [ ] **Bước 3: Thêm `clientB`, `clientC` vào `tests/e2e/helpers.ts`**
 
 Sửa `EMAILS`:
 
@@ -395,11 +432,12 @@ Sửa `EMAILS`:
 export const EMAILS = {
   clientA: "client-a@dnkhouse.test",
   clientB: "client-b@dnkhouse.test",
+  clientC: "client-c@dnkhouse.test",
   pending: "pending@dnkhouse.test",
 } as const;
 ```
 
-- [ ] **Bước 2: Viết `tests/e2e/dashboard.spec.ts`**
+- [ ] **Bước 4: Viết `tests/e2e/dashboard.spec.ts`**
 
 ```ts
 import { expect, test } from "@playwright/test";
@@ -434,35 +472,43 @@ test.describe("Dashboard danh sách dự án (Slice 3)", () => {
   });
 
   test("khách không có dự án -> thông báo trống", async ({ page }) => {
-    // pending@ không có project_members; sau khi (giả lập) được duyệt vẫn 0 dự án.
-    // Dùng service role trong test để nâng role pending@ -> client rồi kiểm tra.
-    // Đơn giản hơn: tạo assertion trên chính pending nếu spec chấp nhận;
-    // ở đây ta kiểm tra text thông báo trống xuất hiện cho 1 client 0 dự án.
+    await loginAs(page, EMAILS.clientC);
+    await expect(
+      page.getByText(
+        "Chưa có dự án nào được liên kết với tài khoản của bạn",
+      ),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: /portal\// })).toHaveCount(0);
+  });
+
+  test("user pending vẫn thấy màn chờ duyệt, không phải thông báo trống", async ({
+    page,
+  }) => {
     await loginAs(page, EMAILS.pending);
-    // pending vẫn thấy PendingNotice (không phải thông báo trống) — xác nhận phân biệt:
     await expect(
       page.getByText("Tài khoản đang chờ DNK House duyệt"),
     ).toBeVisible();
+    await expect(
+      page.getByText("Chưa có dự án nào được liên kết"),
+    ).toHaveCount(0);
   });
 });
 ```
 
-Ghi chú: kịch bản "client 0 dự án → thông báo trống" cần 1 client thật không có dự án. Nếu muốn phủ đúng, thêm ở `supabase/seed.sql` (Slice 1) một user `client-c@dnkhouse.test` role `client` không `project_members`, HOẶC trong test dùng `serviceClient()` (import từ `tests/helpers/supabase.ts`) để `update profiles set role='client' where email='pending@...'` trước khi `loginAs`, rồi assert text `"Chưa có dự án nào được liên kết"`. Chọn cách seed thêm user để test sạch, độc lập — nếu chọn cách này, cập nhật `seed.sql` + `IDS` + `EMAILS` cho nhất quán và sửa case trên thành assert thông báo trống.
-
-- [ ] **Bước 3: Chạy E2E**
+- [ ] **Bước 5: Chạy E2E**
 
 ```bash
 npx supabase db reset
 npm run test:e2e
 ```
 
-Kỳ vọng: `auth.spec.ts` (Slice 2) + `dashboard.spec.ts` đều xanh.
+Kỳ vọng: `auth.spec.ts` (Slice 2) + `dashboard.spec.ts` (6 test) đều xanh.
 
-- [ ] **Bước 4: Commit**
+- [ ] **Bước 6: Commit**
 
 ```bash
-git add tests/e2e/dashboard.spec.ts tests/e2e/helpers.ts
-git commit -m "test(portal): E2E dashboard — cô lập dự án theo khách, link chi tiết"
+git add supabase/seed.sql tests/e2e/dashboard.spec.ts tests/e2e/helpers.ts
+git commit -m "test(portal): E2E dashboard — cô lập dự án theo khách, link chi tiết, màn thông báo trống"
 ```
 
 ---
@@ -509,13 +555,13 @@ Kỳ vọng: route `/` `○ (Static) prerendered as static content`, không có 
 - `src/app/portal/page.tsx` — `pending` → `PendingNotice`; `ok` + có dự án → lưới `ProjectCard`; rỗng → thông báo trống → Task 4 ✅
 - `src/components/portal/ProjectCard.tsx` — Server Component; `name`, `status_label` badge, `summary`, nhãn % từ `milestoneProgress`, bọc `<Link href={/portal/${id}}>`, token style → Task 3 ✅
 - Unit `progress.test.ts` — `0/0`, `0/3`, `2/4`, `3/3`, làm tròn → Task 1 ✅
-- E2E `dashboard.spec.ts` — kịch bản 1 (khách chỉ thấy dự án mình) + thông báo trống → Task 5 ✅
+- E2E `dashboard.spec.ts` — kịch bản 1 (khách chỉ thấy dự án mình) + thông báo trống (persona `client-c`, 0 dự án) → Task 5 ✅
 
-**Placeholder:** không có. Task 5 Bước 2 nêu rõ 2 cách xử lý case "client 0 dự án" với hướng dẫn cụ thể — không phải TODO.
+**Placeholder:** không có. (Sửa 2026-09-03: bản trước có 1 "Ghi chú" ở Task 5 mô tả 2 phương án chưa chốt cho case "client 0 dự án" mà không viết test thật — đã sửa bằng cách chốt phương án seed thêm persona `client-c@dnkhouse.test` (role `client`, không `project_members`) và viết test khẳng định trực tiếp trên text thông báo trống.)
 
 **Nhất quán type:**
 - `ProjectListItem { id, name, statusLabel, summary, milestonesDone, milestonesTotal }` — định nghĩa Task 2, dùng Task 3–4, Slice 4 mở rộng cùng file.
 - `milestoneProgress({ done, total })` — Task 1, dùng Task 3.
 - `requireClient()` return `{ status: 'ok'|'pending'; profile }` — từ Slice 2, dùng Task 4 đúng shape.
-- `loginAs` / `EMAILS` — từ Slice 2, mở rộng `EMAILS.clientB` ở Task 5.
-- Email + project name khớp `supabase/seed.sql` Slice 1 (`Chatbot CSKH cho Khách A`, `Tự động hoá nhập liệu — Khách B`).
+- `loginAs` / `EMAILS` — từ Slice 2, mở rộng `EMAILS.clientB` + `EMAILS.clientC` ở Task 5.
+- Email + project name khớp `supabase/seed.sql` Slice 1 (`Chatbot CSKH cho Khách A`, `Tự động hoá nhập liệu — Khách B`); persona `client-c` (id `55555555-5555-5555-5555-555555555555`) thêm ở Task 5, không đụng 4 persona/2 dự án cũ nên `rls.test.ts` (Slice 1) và `auth.spec.ts` (Slice 2) không bị ảnh hưởng.
