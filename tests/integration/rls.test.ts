@@ -51,6 +51,36 @@ describe("RLS — cô lập dữ liệu dự án", () => {
     expect((left.data ?? []).length).toBeGreaterThan(0);
   });
 
+  it("Khách A không ghi được vào project_members (không tự gán/xoá được thành viên)", async () => {
+    const a = await signInAs("clientA");
+    const svc = serviceClient();
+
+    // Cố tự gán mình vào dự án B để leo quyền truy cập dự án của khách khác.
+    const ins = await a
+      .from("project_members")
+      .insert({ project_id: IDS.projectB, profile_id: IDS.clientA });
+    expect(ins.error).not.toBeNull();
+    const checkIns = await svc
+      .from("project_members")
+      .select("project_id")
+      .eq("project_id", IDS.projectB)
+      .eq("profile_id", IDS.clientA);
+    expect(checkIns.data).toEqual([]);
+
+    // Cố xoá chính dòng thành viên của mình ở dự án A (chỉ admin được sửa).
+    await a
+      .from("project_members")
+      .delete()
+      .eq("project_id", IDS.projectA)
+      .eq("profile_id", IDS.clientA);
+    const checkDel = await svc
+      .from("project_members")
+      .select("project_id")
+      .eq("project_id", IDS.projectA)
+      .eq("profile_id", IDS.clientA);
+    expect(checkDel.data).toEqual([{ project_id: IDS.projectA }]);
+  });
+
   it("User pending không đọc được bảng nghiệp vụ nào", async () => {
     const p = await signInAs("pending");
     for (const table of ["projects", "milestones", "updates", "project_members"] as const) {
