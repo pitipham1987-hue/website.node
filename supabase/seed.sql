@@ -79,6 +79,10 @@ insert into public.milestones (project_id, title, position, done) values
   ('bbbbbbbb-0000-0000-0000-000000000002', 'Khảo sát quy trình hiện tại', 0, true),
   ('bbbbbbbb-0000-0000-0000-000000000002', 'Đề xuất giải pháp AI', 1, false);
 
+-- Mốc đã hoàn thành cần done_at để portal hiển thị ngày hoàn thành.
+-- Trigger set_milestone_done_at chỉ chạy BEFORE UPDATE, không set khi seed INSERT.
+update public.milestones set done_at = now() - interval '20 days' where done;
+
 -- ============ Updates ============
 insert into public.updates (project_id, body, author_name, created_at) values
   ('aaaaaaaa-0000-0000-0000-000000000001', 'Đã hoàn tất huấn luyện vòng 1, độ chính xác đạt mức mục tiêu.', 'DNK House', now() - interval '2 days'),
