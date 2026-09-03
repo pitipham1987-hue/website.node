@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export type Role = "pending" | "client" | "admin";
@@ -65,4 +65,66 @@ export async function requireClient(): Promise<{
   const access = resolveClientAccess(await getSessionProfile());
   if (access.status === "redirect") redirect("/login");
   return access;
+}
+
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  statusLabel: string;
+  summary: string | null;
+}
+
+export type ProjectAccess =
+  | { status: "notFound" }
+  | { status: "ok"; project: ProjectSummary };
+
+/**
+ * Thuần — quyết định quyền xem chi tiết dự án.
+ * pending, hoặc RLS không trả dòng nào (không quyền / không tồn tại) -> notFound.
+ * Không phân biệt "không tồn tại" với "không có quyền" (tránh lộ sự tồn tại của dự án).
+ */
+export function resolveProjectAccess(
+  clientStatus: "ok" | "pending",
+  project: ProjectSummary | null,
+): ProjectAccess {
+  if (clientStatus === "pending" || !project) return { status: "notFound" };
+  return { status: "ok", project };
+}
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Gọi ở đầu page /portal/[projectId]. redirect()/notFound() ném control-flow,
+ * code phía sau không chạy khi bị chặn.
+ */
+export async function requireProjectAccess(
+  projectId: string,
+): Promise<ProjectSummary> {
+  const access = await requireClient();
+
+  // id không đúng dạng UUID -> notFound luôn, khỏi để Postgres ném lỗi 22P02 vào error.tsx.
+  if (!UUID_RE.test(projectId)) notFound();
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("projects")
+    .select("id, name, status_label, summary")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (error) throw error;
+
+  const resolved = resolveProjectAccess(
+    access.status,
+    data
+      ? {
+          id: data.id,
+          name: data.name,
+          statusLabel: data.status_label,
+          summary: data.summary ?? null,
+        }
+      : null,
+  );
+  if (resolved.status === "notFound") notFound();
+  return resolved.project;
 }
