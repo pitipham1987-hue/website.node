@@ -38,3 +38,63 @@ export async function getProjectsForUser(): Promise<ProjectListItem[]> {
     };
   });
 }
+
+export interface Milestone {
+  id: string;
+  title: string;
+  done: boolean;
+  doneAt: string | null;
+}
+
+export interface ProjectUpdate {
+  id: string;
+  body: string;
+  authorName: string;
+  createdAt: string;
+}
+
+export interface ProjectDetail {
+  milestones: Milestone[];
+  updates: ProjectUpdate[];
+}
+
+/**
+ * Con của 1 dự án: mốc triển khai (thứ tự position tăng dần) + nhật ký cập nhật
+ * (mới nhất trên đầu). Dự án cơ bản đã lấy ở requireProjectAccess — không truy vấn lại.
+ */
+export async function getProjectDetail(
+  projectId: string,
+): Promise<ProjectDetail> {
+  const supabase = await createClient();
+
+  const [milestonesRes, updatesRes] = await Promise.all([
+    supabase
+      .from("milestones")
+      .select("id, title, done, done_at")
+      .eq("project_id", projectId)
+      .order("position", { ascending: true }),
+    supabase
+      .from("updates")
+      .select("id, body, author_name, created_at")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false }),
+  ]);
+
+  if (milestonesRes.error) throw milestonesRes.error;
+  if (updatesRes.error) throw updatesRes.error;
+
+  return {
+    milestones: (milestonesRes.data ?? []).map((m) => ({
+      id: m.id,
+      title: m.title,
+      done: m.done,
+      doneAt: m.done_at,
+    })),
+    updates: (updatesRes.data ?? []).map((u) => ({
+      id: u.id,
+      body: u.body,
+      authorName: u.author_name,
+      createdAt: u.created_at,
+    })),
+  };
+}
