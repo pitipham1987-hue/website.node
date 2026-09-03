@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Claude Code skill/tooling scripts — không phải app source, viết CommonJS
+    // có chủ đích, không nên áp rule TypeScript/Next của app vào đây.
+    ".claude/**",
   ]),
 ]);
 

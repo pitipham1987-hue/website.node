@@ -16,10 +16,12 @@ npm run build    # production build — chạy trước khi coi là hoàn thành
 npm run start    # chạy bản đã build
 npm run lint     # ESLint (flat config: eslint-config-next core-web-vitals + typescript)
 npx tsc --noEmit # kiểm tra type (tsconfig strict, noEmit)
+npm run test      # Vitest (unit + integration). Integration cần `npx supabase start` (Docker).
+npm run test:e2e  # Playwright E2E (từ Slice 2). Cần Supabase local + app chạy.
 ```
 
-Chưa có test runner nào được cấu hình — không có `npm test`. Nếu cần test, hỏi user
-trước khi thêm framework.
+Test: Vitest (`npm run test`) cho unit + integration RLS; Playwright (`npm run test:e2e`) cho E2E
+(từ Slice 2). Integration/E2E cần Supabase local: `npx supabase start` (yêu cầu Docker Desktop).
 
 ## Architecture
 
@@ -230,6 +232,57 @@ dung của weav (xem mục [Về nội dung: DNK House ≠ weav.com](#về-nội
 
 Nội dung site mặc định bằng **tiếng Việt** (theo ngôn ngữ trao đổi của user). Nếu
 cần bản tiếng Anh song song, hỏi rõ trước khi build i18n thay vì tự ý thêm.
+
+## Portal (client portal)
+
+Khu vực đăng nhập cho khách hàng DNK House xem tiến độ dự án. Tách biệt hoàn toàn
+với landing `/` (vẫn SSG, không phụ thuộc Supabase).
+
+- **Route:**
+  - `/login` — nút "Đăng nhập với Google" (Supabase Auth OAuth).
+  - `/auth/callback` — Route Handler đổi `code` lấy session.
+  - `/portal` — danh sách dự án của khách; `role = 'pending'` → màn "chờ duyệt".
+  - `/portal/[projectId]` — chi tiết 1 dự án: mốc triển khai + nhật ký cập nhật.
+- **Ba lớp bảo vệ:** (1) `src/proxy.ts` đọc cookie, redirect `/portal ↔ /login`;
+  (2) DAL `src/lib/portal/session.ts` (`requireClient`, `requireProjectAccess`)
+  gọi ở đầu **mỗi page** — KHÔNG đặt auth check trong `layout.tsx`;
+  (3) RLS Postgres là phòng thủ cuối — client chỉ đọc được dự án mình là thành
+  viên, mọi thao tác ghi chỉ `admin`.
+- **Truy vấn:** `src/lib/portal/queries.ts` — server-only, RLS tự lọc theo
+  `auth.uid()`. Client Supabase: `src/lib/supabase/{server,client,middleware}.ts`
+  (`@supabase/ssr`).
+- **`notFound()`** render `src/app/portal/not-found.tsx`; lỗi truy vấn bất ngờ
+  render `src/app/portal/error.tsx` (hai boundary khác nhau).
+- **Nhập liệu (Giai đoạn 1):** dự án / mốc / cập nhật nhập tay qua Supabase
+  Studio; duyệt khách = đổi `profiles.role` `pending → client` + thêm dòng
+  `project_members`. Trang admin (`/portal/admin`) là Giai đoạn 2.
+- Toàn bộ portal tiếng Việt, không i18n. KHÔNG dùng `ScrollReveal` của landing.
+
+## Biến môi trường (client portal)
+
+Xem `.env.local.example`. Ba biến Supabase:
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — công khai, dùng cả client lẫn server.
+- `SUPABASE_SERVICE_ROLE_KEY` — **chỉ server** (seed test, thao tác admin). Không import vào code chạy ở trình duyệt.
+- `E2E_TEST_LOGIN` — đặt `1` **chỉ khi chạy Playwright**. Bật route `/auth/test-login?email=<email>`
+  đăng nhập user seed bằng mật khẩu cố định (bỏ qua Google). Route trả 404 khi biến này khác `1`.
+  `playwright.config.ts` tự set biến này cho webServer.
+
+> **CẢNH BÁO BẢO MẬT — `E2E_TEST_LOGIN` chỉ có ĐÚNG MỘT lớp bảo vệ:** route
+> `/auth/test-login` (`src/app/auth/test-login/route.ts`) chỉ kiểm tra
+> `process.env.E2E_TEST_LOGIN === "1"`. Route này **KHÔNG** kiểm tra thêm
+> `NODE_ENV` — và **không thể** dựa vào `NODE_ENV` để phân biệt "test E2E chạy
+> local" với "production thật", vì `next start` (kể cả khi build để chạy E2E
+> cục bộ, xem `webServer.command` trong `playwright.config.ts`) tự đặt
+> `NODE_ENV=production` — đã kiểm chứng thực nghiệm, không phải giả định. Do
+> đó **TUYỆT ĐỐI KHÔNG được đặt biến `E2E_TEST_LOGIN=1` trong Vercel Project
+> Settings hay bất kỳ môi trường production/staging thật nào**. Nếu bị đặt
+> nhầm: bất kỳ ai biết email của một khách hàng (email không phải bí mật) đều
+> có thể tự đăng nhập giả làm khách hàng đó, vì mật khẩu dùng để bỏ qua Google
+> là **cố định và công khai trong code** (`portal-dev-123`) — chiếm được toàn
+> bộ phiên của khách hàng mà không cần mật khẩu Google thật của họ.
+
+Dev local: `npx supabase start` rồi copy 3 giá trị (`npx supabase status`) vào `.env.local`.
+Migrations + seed: `npx supabase db reset`.
 
 ## Conventions
 
