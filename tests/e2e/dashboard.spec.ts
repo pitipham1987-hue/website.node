@@ -36,7 +36,7 @@ test.describe("Dashboard danh sách dự án (Slice 3)", () => {
         "Chưa có dự án nào được liên kết với tài khoản của bạn",
       ),
     ).toBeVisible();
-    await expect(page.getByRole("link", { name: /portal\// })).toHaveCount(0);
+    await expect(page.locator('a[href^="/portal/"]')).toHaveCount(0);
   });
 
   test("user pending vẫn thấy màn chờ duyệt, không phải thông báo trống", async ({
