@@ -258,6 +258,10 @@ với landing `/` (vẫn SSG, không phụ thuộc Supabase).
   `project_members`. Trang admin (`/portal/admin`) là Giai đoạn 2.
 - Toàn bộ portal tiếng Việt, không i18n. KHÔNG dùng `ScrollReveal` của landing.
 
+
+Tổng kết toàn phiên: Giai đoạn 1 (client portal đăng nhập Google — 4 slice, 33 commit tính năng) đã hoàn tất, review sạch qua từng task lẫn tổng thể, và đã merge vào main cục bộ (37 commit vượt trước origin/main, chưa push). Trước khi deploy thật, còn 3 việc cần bạn tự làm: cấu hình Google OAuth thật trên Supabase hosted + biến môi trường Vercel, không bao giờ đặt E2E_TEST_LOGIN=1 ở production, và cấp role='admin' + nhập dữ liệu dự án đầu tiên qua Supabase Studio.
+
+
 ## Biến môi trường (client portal)
 
 Xem `.env.local.example`. Ba biến Supabase:
