@@ -1,5 +1,7 @@
 import { requireClient } from "@/lib/portal/session";
+import { getProjectsForUser } from "@/lib/portal/queries";
 import { PendingNotice } from "@/components/portal/PendingNotice";
+import { ProjectCard } from "@/components/portal/ProjectCard";
 
 export default async function PortalPage() {
   const access = await requireClient();
@@ -8,15 +10,27 @@ export default async function PortalPage() {
     return <PendingNotice />;
   }
 
+  const projects = await getProjectsForUser();
   const name = access.profile.fullName ?? access.profile.email;
+
   return (
     <div>
       <h1 className="text-2xl font-semibold text-foreground">
-        Xin chào, {name}
+        Dự án của {name}
       </h1>
-      <p className="mt-3 text-sm leading-relaxed text-muted">
-        Danh sách dự án của bạn sẽ hiển thị ở đây. Tính năng đang được hoàn thiện.
-      </p>
+
+      {projects.length === 0 ? (
+        <p className="mt-6 rounded-2xl border border-border bg-surface p-6 text-sm leading-relaxed text-muted">
+          Chưa có dự án nào được liên kết với tài khoản của bạn. DNK House sẽ cập
+          nhật khi dự án của bạn được khởi tạo.
+        </p>
+      ) : (
+        <div className="mt-6 grid gap-5 sm:grid-cols-2">
+          {projects.map((project) => (
+            <ProjectCard key={project.id} project={project} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
