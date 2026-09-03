@@ -2,6 +2,8 @@ import type { Page } from "@playwright/test";
 
 export const EMAILS = {
   clientA: "client-a@dnkhouse.test",
+  clientB: "client-b@dnkhouse.test",
+  clientC: "client-c@dnkhouse.test",
   pending: "pending@dnkhouse.test",
 } as const;
 

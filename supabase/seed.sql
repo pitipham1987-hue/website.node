@@ -29,6 +29,11 @@ values
    'authenticated', 'authenticated', 'pending@dnkhouse.test', crypt('portal-dev-123', gen_salt('bf')),
    now(), now(), now(),
    '{"provider":"email","providers":["email"]}', '{"full_name":"Khách chờ duyệt"}',
+   '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000000', '55555555-5555-5555-5555-555555555555',
+   'authenticated', 'authenticated', 'client-c@dnkhouse.test', crypt('portal-dev-123', gen_salt('bf')),
+   now(), now(), now(),
+   '{"provider":"email","providers":["email"]}', '{"full_name":"Khách C"}',
    '', '', '', '');
 
 insert into auth.identities
@@ -41,12 +46,16 @@ values
   (gen_random_uuid(), '33333333-3333-3333-3333-333333333333', '33333333-3333-3333-3333-333333333333',
    '{"sub":"33333333-3333-3333-3333-333333333333","email":"client-b@dnkhouse.test"}', 'email', now(), now(), now()),
   (gen_random_uuid(), '44444444-4444-4444-4444-444444444444', '44444444-4444-4444-4444-444444444444',
-   '{"sub":"44444444-4444-4444-4444-444444444444","email":"pending@dnkhouse.test"}', 'email', now(), now(), now());
+   '{"sub":"44444444-4444-4444-4444-444444444444","email":"pending@dnkhouse.test"}', 'email', now(), now(), now()),
+  (gen_random_uuid(), '55555555-5555-5555-5555-555555555555', '55555555-5555-5555-5555-555555555555',
+   '{"sub":"55555555-5555-5555-5555-555555555555","email":"client-c@dnkhouse.test"}', 'email', now(), now(), now());
 
 -- ============ Set role (seed chạy không có auth.uid() -> trigger prevent_role_self_change không chặn) ============
 update public.profiles set role = 'admin'  where id = '11111111-1111-1111-1111-111111111111';
 update public.profiles set role = 'client' where id = '22222222-2222-2222-2222-222222222222';
 update public.profiles set role = 'client' where id = '33333333-3333-3333-3333-333333333333';
+update public.profiles set role = 'client' where id = '55555555-5555-5555-5555-555555555555';
+-- client-c cố ý KHÔNG có dòng project_members nào (dùng test màn "thông báo trống").
 -- pending@ giữ role mặc định 'pending'
 
 -- ============ Projects ============
