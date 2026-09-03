@@ -16,10 +16,12 @@ npm run build    # production build — chạy trước khi coi là hoàn thành
 npm run start    # chạy bản đã build
 npm run lint     # ESLint (flat config: eslint-config-next core-web-vitals + typescript)
 npx tsc --noEmit # kiểm tra type (tsconfig strict, noEmit)
+npm run test      # Vitest (unit + integration). Integration cần `npx supabase start` (Docker).
+npm run test:e2e  # Playwright E2E (từ Slice 2). Cần Supabase local + app chạy.
 ```
 
-Chưa có test runner nào được cấu hình — không có `npm test`. Nếu cần test, hỏi user
-trước khi thêm framework.
+Test: Vitest (`npm run test`) cho unit + integration RLS; Playwright (`npm run test:e2e`) cho E2E
+(từ Slice 2). Integration/E2E cần Supabase local: `npx supabase start` (yêu cầu Docker Desktop).
 
 ## Architecture
 
@@ -230,6 +232,15 @@ dung của weav (xem mục [Về nội dung: DNK House ≠ weav.com](#về-nội
 
 Nội dung site mặc định bằng **tiếng Việt** (theo ngôn ngữ trao đổi của user). Nếu
 cần bản tiếng Anh song song, hỏi rõ trước khi build i18n thay vì tự ý thêm.
+
+## Biến môi trường (client portal)
+
+Xem `.env.local.example`. Ba biến Supabase:
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — công khai, dùng cả client lẫn server.
+- `SUPABASE_SERVICE_ROLE_KEY` — **chỉ server** (seed test, thao tác admin). Không import vào code chạy ở trình duyệt.
+
+Dev local: `npx supabase start` rồi copy 3 giá trị (`npx supabase status`) vào `.env.local`.
+Migrations + seed: `npx supabase db reset`.
 
 ## Conventions
 
