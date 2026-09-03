@@ -22,12 +22,16 @@ test.describe("Auth + bảo vệ route (Slice 2)", () => {
     await expect(
       page.getByText("Tài khoản đang chờ DNK House duyệt"),
     ).toBeVisible();
-    await expect(page.getByText("Xin chào")).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { level: 1, name: /^Dự án của/ }),
+    ).toHaveCount(0);
   });
 
   test("đăng xuất: về /login và không vào lại /portal được", async ({ page }) => {
     await loginAs(page, EMAILS.clientA);
-    await expect(page.getByText("Xin chào")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: /^Dự án của/ }),
+    ).toBeVisible();
 
     await page.getByRole("button", { name: "Đăng xuất" }).click();
     await expect(page).toHaveURL(/\/login$/);
