@@ -123,7 +123,7 @@ Tìm dòng `.env*` (trong nhóm `# env files`). Ngay sau nó thêm dòng:
 ```bash
 # Supabase — client portal (Giai đoạn 1)
 # Giá trị dev local: chạy `npx supabase start` rồi copy từ output (hoặc `npx supabase status`).
-# Giá trị production: lấy từ Supabase Dashboard -> Project Settings -> API, và điền vào Vercel.
+# Nếu dùng Supabase hosted: lấy ở Supabase Dashboard -> Project Settings -> API, điền vào .env.local.
 
 # URL project Supabase (local mặc định: http://127.0.0.1:54321)
 NEXT_PUBLIC_SUPABASE_URL=

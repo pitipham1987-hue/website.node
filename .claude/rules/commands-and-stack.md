@@ -19,7 +19,7 @@ Test: Vitest (`npm run test`) cho unit + integration RLS; Playwright (`npm run t
 
 - **Framework:** Next.js (App Router) + TypeScript
 - **Styling:** Tailwind CSS
-- **Deploy:** Vercel (mặc định giả định — đổi nếu dùng nền tảng khác)
+- **Deploy:** chưa deploy — site chỉ chạy local (`npm run dev`, hoặc `npm run build` + `npm run start`). Khi nào cần đưa lên internet thì chọn nền tảng sau; toàn bộ cấu hình hiện nằm trong `.env.local`, không phụ thuộc nền tảng host nào
 - **Fonts:** load qua `next/font` (không dùng CDN ngoài để tránh layout shift)
 - **Icons:** lucide-react (nhẹ, style outline nhất quán với thẩm mỹ tối giản)
 - **Animation:** framer-motion (`whileInView`) cho mọi scroll-reveal, dùng chung 1

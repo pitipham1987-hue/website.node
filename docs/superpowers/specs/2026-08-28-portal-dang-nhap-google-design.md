@@ -7,7 +7,7 @@
 ## 1. Bối cảnh & mục tiêu
 
 Dự án hiện tại là landing page tĩnh một trang (Next.js 16 App Router, React 19, Tailwind v4,
-không backend, không API route, không database, deploy Vercel).
+không backend, không API route, không database, chỉ chạy local — chưa deploy).
 
 Yêu cầu: thêm **client portal** để khách hàng của DNK House đăng nhập bằng Google và xem
 tiến độ dự án của họ. Việc này biến dự án từ site tĩnh thành ứng dụng full-stack.
@@ -54,8 +54,9 @@ Không thêm ORM. Truy vấn qua Supabase client. Không thêm thư viện quả
 2. Tạo Google Cloud OAuth 2.0 Client ID. Dán **Authorized redirect URI** trỏ tới callback
    của Supabase (`https://<project>.supabase.co/auth/v1/callback`).
 3. Trong Supabase Dashboard → Authentication → Providers → bật Google, điền Client ID +
-   Secret.
-4. Thêm biến môi trường vào `.env.local` (dev) và Vercel Project Settings (production).
+   Secret. Thêm `http://localhost:3000/auth/callback` vào redirect URL cho phép của Supabase.
+4. Thêm biến môi trường vào `.env.local` (site chỉ chạy local — chưa deploy, chưa cần cấu
+   hình biến trên nền tảng host nào).
 5. Cài Supabase CLI + Docker Desktop trên máy dev (cho `supabase start`).
 
 ### 2.3 Luồng đăng nhập

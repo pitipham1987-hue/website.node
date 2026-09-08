@@ -14,15 +14,23 @@ Xem `.env.local.example`. Ba biến Supabase:
 > local" với "production thật", vì `next start` (kể cả khi build để chạy E2E
 > cục bộ, xem `webServer.command` trong `playwright.config.ts`) tự đặt
 > `NODE_ENV=production` — đã kiểm chứng thực nghiệm, không phải giả định. Do
-> đó **TUYỆT ĐỐI KHÔNG được đặt biến `E2E_TEST_LOGIN=1` trong Vercel Project
-> Settings hay bất kỳ môi trường production/staging thật nào**. Nếu bị đặt
+> đó **TUYỆT ĐỐI KHÔNG được đặt biến `E2E_TEST_LOGIN=1` ở bất kỳ môi trường
+> production/staging thật nào** (dashboard biến môi trường của nền tảng deploy,
+> `.env` trên server, v.v.). Hiện site chỉ chạy local nên rủi ro thấp, nhưng giữ
+> nguyên tắc này để sau này deploy không vấp. Nếu bị đặt
 > nhầm: bất kỳ ai biết email của một khách hàng (email không phải bí mật) đều
 > có thể tự đăng nhập giả làm khách hàng đó, vì mật khẩu dùng để bỏ qua Google
 > là **cố định và công khai trong code** (`portal-dev-123`) — chiếm được toàn
 > bộ phiên của khách hàng mà không cần mật khẩu Google thật của họ.
 
-Dev local: `npx supabase start` rồi copy 3 giá trị (`npx supabase status`) vào `.env.local`.
+Dev local (test integration/E2E): `npx supabase start` rồi copy 3 giá trị (`npx supabase status`) vào `.env.local`.
 Migrations + seed: `npx supabase db reset`.
+
+Supabase hosted (chạy Google OAuth thật khi dev): project `obcfgqkaokghxgauomxo`
+(`ap-northeast-1`). Lấy URL + anon key + service key ở Studio → Project Settings →
+API, điền vào `.env.local`. Schema đẩy bằng `npx supabase db push --db-url "<session
+pooler URI>"` (không cần `supabase login`); **không** đẩy `seed.sql` lên hosted.
+`.env.local` chỉ trỏ được 1 nơi — đổi qua lại giữa local/hosted tuỳ việc đang làm.
 
 Kiến trúc portal liên quan: xem [[portal-architecture]]. Lý do đầy đủ vì sao route
 này không thêm điều kiện `NODE_ENV !== "production"` (đã kiểm chứng thực nghiệm,
