@@ -12,9 +12,25 @@ service key để kiểm thử giao diện. Việc còn lại: không bao giờ 
 
 **Cập nhật lần cuối: 2026-09-08.** Giai đoạn 1 (đăng nhập Google + dashboard khách
 hàng, xem [[portal-architecture]]) đã **hoàn tất cả 4 slice**, đã merge vào `main`
-và **đã push lên `origin/main`** (đồng bộ tại `f50b335`). Thực thi qua skill
+và **đã push lên `origin/main`** (`f50b335`). Thực thi qua skill
 `subagent-driven-development`: mỗi task một subagent riêng, review tách biệt (tuân
 thủ spec + chất lượng) sau mỗi task, review tổng thể cuối mỗi slice.
+
+### Phiên 2026-09-08 đã làm
+
+1. **Bỏ Vercel khỏi toàn bộ docs** — site chỉ chạy local (`npm run dev` / `build`
+   + `start`), mọi cấu hình nằm trong `.env.local`, không gắn với nền tảng host nào.
+   Sửa: `commands-and-stack.md`, `portal-env-security.md`, `.env.local.example`,
+   spec + plan Giai đoạn 1.
+2. **Dựng Supabase hosted** `obcfgqkaokghxgauomxo` (`ap-northeast-1`) — push 3
+   migration bằng `npx supabase db push --db-url "<session pooler URI>"` (không cần
+   `supabase login`), bật Google provider, `.env.local` trỏ hosted.
+3. **Xác minh Google OAuth thật end-to-end** — login `luongthedat@gmail.com`,
+   trigger `handle_new_user` tự tạo `profiles` role `pending`, thấy màn "chờ duyệt".
+4. **Cấp `role='admin'`** cho `luongthedat@gmail.com` + **nạp 1 dự án demo**
+   ("Trợ lý AI nội bộ — Demo", 5 milestone + 3 nhật ký + `project_members`) qua
+   `SUPABASE_SERVICE_ROLE_KEY` (bỏ qua RLS). Portal hiển thị đúng (đã xác nhận).
+5. Commit `1328c49` trên `main` (docs — **chưa push**).
 
 ## Trạng thái từng phần
 
@@ -29,20 +45,25 @@ thủ spec + chất lượng) sau mỗi task, review tổng thể cuối mỗi s
 | Supabase hosted + OAuth thật | ✅ Xong (2026-09-08) | Project `obcfgqkaokghxgauomxo` (`ap-northeast-1`). 3 migration đã `supabase db push`. Google provider bật, đăng nhập thật OK. `.env.local` trỏ hosted. 1 dự án demo + admin `luongthedat@gmail.com` nạp qua service key |
 | Giai đoạn 2 (`/portal/admin`) | ⬜ Chưa bắt đầu | Cần spec riêng — xem mục "Bước tiếp theo" |
 
-## Bước tiếp theo
+## Bước tiếp theo (phiên sau)
 
-1. ~~**Cấu hình Google OAuth thật**~~ ✅ Xong (2026-09-08) — Supabase hosted
-   `obcfgqkaokghxgauomxo`, Google provider bật, `.env.local` trỏ hosted, đăng nhập
-   thật OK. Thiết kế gốc: `docs/superpowers/specs/2026-08-28-portal-dang-nhap-google-design.md`
-   mục 2.2.
-2. ~~**Push `main` lên `origin/main`**~~ ✅ Đã push (2026-09-08) — `main` đồng bộ `origin/main` tại `f50b335`.
-3. ~~**Đặt `role = 'admin'`**~~ ✅ Xong — `luongthedat@gmail.com` đã là `admin` (nạp
-   qua service key, không phải Studio).
-4. ~~**Nhập dữ liệu dự án đầu tiên**~~ ✅ Đã nạp **1 dự án demo** ("Trợ lý AI nội
-   bộ — Demo", 5 milestone + 3 nhật ký + `project_members`) qua service key để test
-   giao diện. **Dữ liệu dự án thật** vẫn phải nhập tay (`projects`, `milestones`,
-   `updates`, duyệt khách `pending → client`, gán `project_members`) — Giai đoạn 1
-   chưa có UI quản trị.
+**Việc dọn dẹp ngay (do phiên 2026-09-08 tạo ra):**
+
+1. **Đổi mật khẩu DB Supabase hosted** — mật khẩu đặt lúc tạo project đã bị lộ trong
+   transcript khi chạy `supabase db push --db-url`. Studio → Project Settings →
+   Database → Reset database password. App không dùng mật khẩu này (chỉ
+   `NEXT_PUBLIC_SUPABASE_*` + service key) nên đổi không ảnh hưởng.
+2. **Push `main` lên `origin/main`** — đang có commit `1328c49` (docs) chưa push.
+3. **Chú ý `.env.local` đang trỏ hosted** — `npm run test` (integration RLS) và
+   `npm run test:e2e` vẫn cần Supabase **local** (`npx supabase start`). Khi chạy
+   test phải tạm đổi `.env.local` về giá trị local, hoặc giữ 2 bản (local/hosted).
+
+**Việc tính năng:**
+
+4. **Nhập dữ liệu dự án thật** (khi có khách thật) — vẫn làm tay qua Studio hoặc
+   service key: `projects`, `milestones`, `updates`, duyệt khách `pending → client`,
+   gán `project_members`. Giai đoạn 1 chưa có UI quản trị. Có thể xoá dự án demo
+   "Trợ lý AI nội bộ — Demo" khi không cần nữa.
 5. **Brainstorm + viết spec Giai đoạn 2** (`/portal/admin`) trước khi viết plan —
    CRUD dự án/milestone/update, duyệt khách, gán `project_members`, thay thế thao
    tác thủ công ở bước 4. Dùng skill `brainstorming` trước, không nhảy thẳng vào
@@ -50,13 +71,6 @@ thủ spec + chất lượng) sau mỗi task, review tổng thể cuối mỗi s
 6. **(Tuỳ chọn, không chặn)** `roleToScreen` (`src/lib/portal/session.ts`) hiện chỉ
    được dùng trong unit test, không có call site trong code sản phẩm — cân nhắc
    dùng thật khi làm Giai đoạn 2 hoặc dọn bỏ nếu vẫn không cần.
-7. **Đổi mật khẩu DB Supabase hosted** — mật khẩu đặt lúc tạo project đã bị lộ khi
-   chạy `supabase db push` qua transcript. Studio → Project Settings → Database →
-   Reset database password. App không dùng mật khẩu này (chỉ `NEXT_PUBLIC_SUPABASE_*`
-   + service key) nên đổi không ảnh hưởng.
-8. **`.env.local` giờ trỏ hosted** → `npm run test` (integration RLS) và
-   `npm run test:e2e` vẫn cần Supabase **local** (`npx supabase start`). Khi chạy
-   test phải tạm đổi `.env.local` về giá trị local, hoặc giữ 2 bản.
 
 ## Quyết định quan trọng đã đưa ra (và lý do)
 
@@ -89,12 +103,24 @@ thủ spec + chất lượng) sau mỗi task, review tổng thể cuối mỗi s
 - **Merge vào `main` rồi push lên `origin/main`** — ban đầu người dùng giữ cục bộ
   (quyết định của người dùng, không phải giới hạn kỹ thuật); sau đã push. `main` ==
   `origin/main` tại `f50b335`.
+- **Bỏ Vercel khỏi docs, site chỉ chạy local** (phiên 2026-09-08) — người dùng chốt
+  chưa deploy lên nền tảng nào. Mọi hướng dẫn "điền biến vào Vercel" đổi thành điền
+  vào `.env.local`. Khi nào cần đưa lên internet mới chọn nền tảng (Vercel chỉ là
+  gợi ý cũ, không bắt buộc — xem [[commands-and-stack]]).
 - **Supabase hosted dùng cho dev thủ công, Supabase local dùng cho test** — sau khi
   dựng hosted (`obcfgqkaokghxgauomxo`, `ap-northeast-1`) để chạy Google OAuth thật,
   `.env.local` trỏ hosted. Test integration/E2E vẫn cần local. Chấp nhận phải đổi
   `.env.local` qua lại (hoặc giữ 2 bản), không cố gộp làm một. Schema hosted đẩy
-  bằng `supabase db push --db-url` (không `supabase login`); seed test **không** đẩy
-  lên hosted. Dữ liệu demo nạp qua `SUPABASE_SERVICE_ROLE_KEY` (bỏ qua RLS).
+  bằng `supabase db push --db-url` (không `supabase login` — chỉ cần chuỗi session
+  pooler; host thật là `aws-0-ap-northeast-1.pooler.supabase.com`, không phải
+  `db.<ref>.supabase.co` vì direct connection IPv6-only). Seed test **không** đẩy
+  lên hosted.
+- **Nạp dữ liệu qua `SUPABASE_SERVICE_ROLE_KEY` thay vì Studio Table Editor** — cho
+  set `role='admin'` + dự án demo. Nhanh, script được, và service key bỏ qua RLS lẫn
+  trigger `prevent_role_self_change` (trigger chỉ chặn khi có `auth.uid()`).
+- **Dùng dự án demo trước khi có dự án thật** — người dùng chọn kiểm thử giao diện
+  portal ngay với 1 dự án giả đầy đủ (milestone xong/chưa, nhiều nhật ký) thay vì
+  chờ dữ liệu khách hàng thật. Xoá được khi không cần.
 - **`requireAdmin()` dời sang Giai đoạn 2** — theo đúng thiết kế gốc: Giai đoạn 1
   không có route/Server Action nào cần, thêm sớm sẽ là code chết.
 - **`formatVnDate` tự viết bằng `Intl.DateTimeFormat`**, không thêm thư viện ngày
