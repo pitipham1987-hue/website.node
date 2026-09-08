@@ -128,3 +128,33 @@ export async function requireProjectAccess(
   if (resolved.status === "notFound") notFound();
   return resolved.project;
 }
+
+export type AdminAccess =
+  | { status: "redirect-login" }
+  | { status: "redirect-portal" }
+  | { status: "ok"; profile: SessionProfile };
+
+/** Thuần — quyết định quyền vào khu admin. Không admin (gồm pending/client) -> đẩy về /portal. */
+export function resolveAdminAccess(
+  profile: SessionProfile | null,
+): AdminAccess {
+  if (!profile) return { status: "redirect-login" };
+  if (profile.role !== "admin") return { status: "redirect-portal" };
+  return { status: "ok", profile };
+}
+
+/**
+ * Gọi ở đầu mọi page /portal/admin/** và đầu mọi Server Action admin.
+ * redirect() ném control-flow -> code sau không chạy khi bị chặn.
+ */
+export async function requireAdmin(): Promise<SessionProfile> {
+  const access = resolveAdminAccess(await getSessionProfile());
+  if (access.status === "redirect-login") redirect("/login");
+  if (access.status === "redirect-portal") redirect("/portal");
+  return access.profile;
+}
+
+/** Thuần — đường dẫn sau đăng nhập theo role (dùng ở /auth/callback). */
+export function postLoginPath(role: Role | null): "/portal" | "/portal/admin" {
+  return role === "admin" ? "/portal/admin" : "/portal";
+}
