@@ -23,14 +23,33 @@ Xem `.env.local.example`. Ba biến Supabase:
 > là **cố định và công khai trong code** (`portal-dev-123`) — chiếm được toàn
 > bộ phiên của khách hàng mà không cần mật khẩu Google thật của họ.
 
-Dev local (test integration/E2E): `npx supabase start` rồi copy 3 giá trị (`npx supabase status`) vào `.env.local`.
-Migrations + seed: `npx supabase db reset`.
+## `.env.test` — môi trường chạy test (Supabase local)
+
+File `.env.test` **được commit** (ngoại lệ trong `.gitignore`: `!.env.test`). Nó chứa
+sẵn 3 giá trị Supabase **local** — bộ key demo cố định, công khai (issuer
+`supabase-demo`), **chỉ dùng được với instance chạy ở localhost bằng JWT secret mặc
+định**. Không phải bí mật, vô dụng với mọi project hosted.
+
+- `npm run test` / `npm run test:watch` — nạp `.env.test` qua
+  `node --env-file-if-exists=.env.test` (không đụng `.env.local`).
+- `npm run test:e2e` — `playwright.config.ts` gọi `process.loadEnvFile(".env.test")`
+  trước khi `defineConfig`; Playwright merge `process.env` vào lệnh `webServer`
+  (`next build && next start`), và `@next/env` không ghi đè biến đã có sẵn trong
+  `process.env` → build/start E2E dùng đúng Supabase local dù `.env.local` trỏ hosted.
+
+Nhờ vậy **không cần đổi `.env.local` qua lại** giữa local/hosted khi chuyển giữa dev
+thủ công và chạy test. Chỉ cần `npx supabase start` (Docker) + `npx supabase db reset`
+(migrations + seed) trước khi chạy test.
+
+Nếu `npx supabase status` in ra key khác giá trị trong `.env.test` (CLI đổi mặc
+định, hoặc `config.toml` thêm JWT secret riêng) thì cập nhật lại `.env.test`.
 
 Supabase hosted (chạy Google OAuth thật khi dev): project `obcfgqkaokghxgauomxo`
 (`ap-northeast-1`). Lấy URL + anon key + service key ở Studio → Project Settings →
 API, điền vào `.env.local`. Schema đẩy bằng `npx supabase db push --db-url "<session
 pooler URI>"` (không cần `supabase login`); **không** đẩy `seed.sql` lên hosted.
-`.env.local` chỉ trỏ được 1 nơi — đổi qua lại giữa local/hosted tuỳ việc đang làm.
+`.env.local` chỉ trỏ được 1 nơi — cứ để trỏ hosted cho dev thủ công; test không
+đọc `.env.local` mà đọc `.env.test` (xem mục trên).
 
 Kiến trúc portal liên quan: xem [[portal-architecture]]. Lý do đầy đủ vì sao route
 này không thêm điều kiện `NODE_ENV !== "production"` (đã kiểm chứng thực nghiệm,

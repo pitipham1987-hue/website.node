@@ -1,0 +1,20 @@
+# Decisions — <service-name>
+
+> Mỗi quyết định kiến trúc quan trọng ghi tại đây, để AI/dev mới không đề xuất lại phương án đã đánh giá và loại bỏ.
+> Xem thêm quyết định hạ tầng dùng chung (Kafka, migration, pool sizing...) tại
+> `references/platform-decisions.md` của skill `golang-clean-architecture`.
+
+## Decision: <tên ngắn>
+
+### Context
+<Bối cảnh, vấn đề cần giải quyết.>
+
+### Decision
+<Quyết định cuối cùng.>
+
+### Why
+<Lý do chọn.>
+
+### Rejected alternatives
+- <Phương án A> — loại vì <lý do>.
+- <Phương án B> — loại vì <lý do>.

@@ -13,7 +13,10 @@ npm run test:e2e  # Playwright E2E (từ Slice 2). Cần Supabase local + app ch
 ```
 
 Test: Vitest (`npm run test`) cho unit + integration RLS; Playwright (`npm run test:e2e`) cho E2E
-(từ Slice 2). Integration/E2E cần Supabase local: `npx supabase start` (yêu cầu Docker Desktop).
+(từ Slice 2). Integration/E2E cần Supabase local: `npx supabase start` (yêu cầu Docker Desktop)
+\+ `npx supabase db reset` (seed). Cả hai lệnh test tự nạp `.env.test` (file được commit,
+chứa sẵn giá trị Supabase local) — **không cần đổi `.env.local`**, dù nó đang trỏ hosted.
+Chi tiết: [`portal-env-security.md`](portal-env-security.md).
 
 ## Tech Stack
 

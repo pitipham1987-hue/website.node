@@ -1,0 +1,46 @@
+# Architecture — <service-name>
+
+## Feature map
+
+```text
+internal/features/
+├── <feature-a>/    <mô tả 1 dòng>
+├── <feature-b>/    <mô tả 1 dòng>
+└── <feature-c>/    <mô tả 1 dòng>
+```
+
+## Dependency direction
+
+```text
+app
+ │
+ ├── <feature-a> ──────┐
+ │                      │
+ ├── <feature-b>        ↓
+ │                  <feature-c>
+ └── <feature-d>
+```
+
+## Public APIs
+
+| Feature | Public module | Ghi chú |
+|---|---|---|
+| `<feature-a>` | `features/<feature-a>/api.Module` | |
+| `<feature-b>` | `features/<feature-b>/api.Module` | |
+
+## Shared infrastructure (`internal/platform/`)
+
+- `logging/` — ...
+- `errors/` — ...
+- `tracing/` — ...
+
+## Transport
+
+<Liệt kê transport đang bật: REST / gRPC / AMQP RPC / NATS RPC, theo mô hình go-clean-template — mỗi transport là 1
+controller mỏng gọi cùng usecase.>
+
+## Architectural constraints
+
+- Business logic (`entity.go`, `usecase.go`) không import framework/driver ngoài — enforce bằng `depguard`
+  (`.golangci.yml`).
+- Feature chỉ giao tiếp qua `api/` của nhau — xem `DECISIONS.md` nếu có ngoại lệ.

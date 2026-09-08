@@ -6,8 +6,9 @@ const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!URL || !ANON || !SERVICE) {
   throw new Error(
-    "Thiếu biến môi trường Supabase. Chạy `npx supabase start`, copy vào .env.local, " +
-      "rồi chạy `npm run test` (script tự nạp .env.local).",
+    "Thiếu biến môi trường Supabase. Chạy `npx supabase start` (giá trị local mặc " +
+      "định đã có sẵn trong .env.test — file này được commit), rồi chạy `npm run test` " +
+      "(script tự nạp .env.test).",
   );
 }
 
