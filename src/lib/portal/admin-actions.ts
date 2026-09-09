@@ -4,7 +4,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/portal/session";
-import { validateProjectInput } from "@/lib/portal/admin-validation";
+import {
+  validateDirection,
+  validateMilestoneTitle,
+  validateProjectInput,
+} from "@/lib/portal/admin-validation";
+import { reorderMilestones } from "@/lib/portal/milestone-order";
 import type { ActionState } from "@/lib/portal/admin-action-state";
 
 const GENERIC_ERROR =
@@ -87,4 +92,121 @@ export async function deleteProject(projectId: string): Promise<void> {
   revalidatePath("/portal/admin");
   revalidatePath("/portal");
   redirect("/portal/admin");
+}
+
+// ============ Mốc triển khai ============
+
+export async function addMilestone(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+  const projectId = String(formData.get("projectId") ?? "");
+  const parsed = validateMilestoneTitle(formData);
+  if (!parsed.ok) return { fieldErrors: parsed.fieldErrors };
+
+  const supabase = await createClient();
+  const { count, error: countError } = await supabase
+    .from("milestones")
+    .select("id", { count: "exact", head: true })
+    .eq("project_id", projectId);
+  if (countError) return { error: GENERIC_ERROR };
+
+  const { error } = await supabase.from("milestones").insert({
+    project_id: projectId,
+    title: parsed.value.title,
+    position: count ?? 0,
+  });
+  if (error) return { error: GENERIC_ERROR };
+
+  revalidateProject(projectId, { list: true, clientView: true });
+  return { ok: true };
+}
+
+export async function renameMilestone(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+  const projectId = String(formData.get("projectId") ?? "");
+  const milestoneId = String(formData.get("milestoneId") ?? "");
+  const parsed = validateMilestoneTitle(formData);
+  if (!parsed.ok) return { fieldErrors: parsed.fieldErrors };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("milestones")
+    .update({ title: parsed.value.title })
+    .eq("id", milestoneId)
+    .eq("project_id", projectId);
+  if (error) return { error: GENERIC_ERROR };
+
+  revalidateProject(projectId, { clientView: true });
+  return { ok: true };
+}
+
+export async function toggleMilestone(
+  projectId: string,
+  milestoneId: string,
+  done: boolean,
+): Promise<void> {
+  await requireAdmin();
+  const supabase = await createClient();
+  // Trigger set_milestone_done_at tự set/xoá done_at.
+  const { error } = await supabase
+    .from("milestones")
+    .update({ done })
+    .eq("id", milestoneId)
+    .eq("project_id", projectId);
+  if (error) throw error;
+
+  revalidateProject(projectId, { list: true, clientView: true });
+}
+
+export async function deleteMilestone(
+  projectId: string,
+  milestoneId: string,
+): Promise<void> {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("milestones")
+    .delete()
+    .eq("id", milestoneId)
+    .eq("project_id", projectId);
+  if (error) throw error;
+
+  // Không renumber ở đây — reorderMilestone tự lành position lần kế tiếp.
+  revalidateProject(projectId, { list: true, clientView: true });
+}
+
+export async function reorderMilestone(
+  projectId: string,
+  milestoneId: string,
+  direction: "up" | "down",
+): Promise<void> {
+  await requireAdmin();
+  const dir = validateDirection(direction);
+  if (!dir.ok) throw new Error(dir.error);
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("milestones")
+    .select("id, position")
+    .eq("project_id", projectId)
+    .order("position", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+
+  const reordered = reorderMilestones(data ?? [], milestoneId, dir.value);
+  for (const m of reordered) {
+    const { error: updError } = await supabase
+      .from("milestones")
+      .update({ position: m.position })
+      .eq("id", m.id)
+      .eq("project_id", projectId);
+    if (updError) throw updError;
+  }
+
+  revalidateProject(projectId, { clientView: true });
 }
