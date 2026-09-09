@@ -8,6 +8,10 @@ commit tính năng, mỗi task 1 subagent + 1 review độc lập — tất cả
 ở Task 12 + 2 vòng fix nhỏ ở Task 19–20). Khu admin đã đủ: 3 nhóm Server Action
 (dự án/mốc/nhật ký/khách), 7 component, 4 route làm việc thật, token `--danger`/
 `--success`. `tsc`/`lint`/`build` xanh xuyên suốt; unit 59/59.
+Sau đó thêm 1 UX fix (`a1754d6`): link "Khu quản trị" trên header `/portal` cho
+admin (trước đó admin xem giao diện khách bị kẹt, không có lối về `/portal/admin`).
+Smoke-test qua dev server trỏ hosted: 4 route `/portal/admin*` khi CHƯA đăng nhập
+→ proxy redirect `/login` đúng, không lỗi compile/console.
 **Còn HOÃN (cần Docker):** chạy `admin-rls.test.ts` (Task 19, file đã viết) +
 `admin.spec.ts` E2E (Task 20, file đã viết) + kiểm truy vấn/ghi Supabase thật (Task
 5–9) + Task 21 Bước 5 (xác minh cuối) + `finishing-a-development-branch`. Task 21
@@ -210,6 +214,19 @@ Seed đủ persona (admin + pending + 3 client) — không sửa. **Bước 5 (x
 `npm run test` + `test:e2e` + kiểm responsive) + `finishing-a-development-branch`
 HOÃN** — cần Docker.
 
+**Sau Task 21 — smoke-test + UX fix (ngoài plan, theo yêu cầu người dùng):**
+- **Smoke-test** qua `npm run dev` trỏ hosted (`.env.local` → `obcfgqkaokghxgauomxo`):
+  4 route `/portal/admin*` khi CHƯA đăng nhập → proxy redirect `/login` (200), 0
+  console error, 0 request fail. Lớp bảo vệ 1 (proxy) OK. Luồng đã đăng nhập (CRUD,
+  reorder, duyệt khách) người dùng tự kiểm bằng Google OAuth thật (`luongthedat@`).
+- **`a1754d6`** — thêm pill "Khu quản trị" (`ShieldCheck` → `/portal/admin`) vào
+  header `src/app/portal/layout.tsx`, chỉ hiện khi `profile?.role === "admin"`.
+  Trước đó admin bấm "Xem như khách" sang `/portal` rồi bị kẹt, không có lối về khu
+  admin theo phiên. Layout đã sẵn gọi `getSessionProfile()` để hiện tên (comment
+  ghi rõ: hiển thị, KHÔNG phải auth check) → không thêm truy vấn. Pill cũng hiện
+  trên `/portal/admin/*` (trùng nhẹ với `AdminNav`, giữ làm lối tắt cố định). Sai
+  lệch có chủ đích so với "Không sửa: `src/app/portal/layout.tsx`" của plan §10.
+
 **Lỗi bắt được trong review (không lọt xuống `main`):**
 - Task 12/13: `if (state.ok) setEditing(false)` trong thân render — với `useActionState`,
   `state` giữ `{ ok: true }` tới lần dispatch kế → ô sửa đóng oan lần sau. Lint dự án
@@ -238,6 +255,8 @@ HOÃN** — cần Docker.
 | Giai đoạn 2 — Task 19 (integration RLS) | 🟡 File viết xong (`27f1272`+`4b95ddd`) | `tests/integration/admin-rls.test.ts` — 5 case. **CHƯA CHẠY**: cần `npx supabase start && db reset && npm run test -- admin-rls` → kỳ vọng 5/5 |
 | Giai đoạn 2 — Task 20 (E2E) | 🟡 File viết xong (`b04c47f`+`109a9fd`) | `tests/e2e/admin.spec.ts` + `EMAILS.admin`. **CHƯA CHẠY**: cần `npx supabase db reset && npm run test:e2e`. Selector có thể phải chỉnh khi chạy thật (không nới lỏng assertion) |
 | Giai đoạn 2 — Task 21 (docs + xác minh cuối) | 🟡 Docs xong, xác minh HOÃN | Rule/status/CLAUDE.md đã cập nhật. Bước 5 (chạy full test + e2e + kiểm responsive) + `finishing-a-development-branch` chờ Docker |
+| Giai đoạn 2 — smoke-test (dev trỏ hosted) | ✅ Một phần (2026-09-09) | 4 route `/portal/admin*` chưa login → proxy redirect `/login`, 0 lỗi. Luồng đã-login (CRUD/reorder/duyệt) người dùng tự kiểm qua Google OAuth thật |
+| Giai đoạn 2 — UX: link "Khu quản trị" ở header portal | ✅ Xong, `a1754d6` | Pill hiện khi `role === "admin"` trên `src/app/portal/layout.tsx` — admin xem giao diện khách có lối quay về `/portal/admin` |
 | Knowledge graph (`graphify-out/`) | ✅ Xong (2026-09-09), đã commit `c6165bf` | 502 nodes. Cập nhật: `graphify . --update` từ repo root |
 | graphify commit hook | ✅ Cài (2026-09-09) | `post-commit`/`post-checkout` auto-rebuild AST sau mỗi commit (detached, không LLM). `.gitattributes` union-merge cho `graph.json` đã commit; merge driver đăng ký per-clone qua `graphify hook install` |
 
@@ -253,11 +272,14 @@ HOÃN** — cần Docker.
    Nếu `admin.spec.ts` selector không khớp markup thật → chỉnh selector (ưu tiên
    `getByRole` neo chặt, KHÔNG nới lỏng assertion). Nếu shape embed Supabase trong
    `admin-queries.ts` sai runtime → sửa mapping (rủi ro đã biết từ Task 5).
-3. **Kiểm thủ công** (spec §11): non-admin mở `/portal/admin*` → `/portal`; chưa
-   login → `/login`. Responsive `/portal/admin` + `projects/[id]` ở 375/768/1440
-   (skill/agent trình duyệt — xem [[mandatory-ui-checks]]).
-4. **Final review toàn nhánh Giai đoạn 2** rồi `finishing-a-development-branch` →
-   push `origin/main`. Xoá workspace SDD
+3. **Kiểm thủ công** (spec §11): non-admin (login) mở `/portal/admin*` → `/portal`
+   (chưa login → `/login` đã xác minh smoke-test). Responsive `/portal/admin` +
+   `projects/[id]` ở 375/768/1440 (skill/agent trình duyệt — xem
+   [[mandatory-ui-checks]]). Xác nhận pill "Khu quản trị" ở header `/portal` chỉ
+   hiện với admin, ẩn với client (`a1754d6` chưa có E2E — cân nhắc thêm 1 assertion
+   vào `admin.spec.ts` / `dashboard.spec.ts`).
+4. **Final review toàn nhánh Giai đoạn 2** (gồm cả `a1754d6`) rồi
+   `finishing-a-development-branch` → push `origin/main`. Xoá workspace SDD
    `.superpowers/sdd/2026-09-08-portal-giai-doan-2-admin/`.
 
 **Việc dọn dẹp còn tồn:**
@@ -438,3 +460,17 @@ HOÃN** — cần Docker.
 - **Review giữa task bắt 3 lỗi trước khi lên `main`** (Task 12 set-state-in-render,
   Task 20 hai selector sai) — xác nhận giá trị của vòng review độc lập mỗi task kể
   cả khi implementer báo "copy nguyên văn brief" (brief tự nó có bug pattern).
+- **Smoke-test qua dev server trỏ hosted, KHÔNG dựng local** — Docker vẫn tắt;
+  người dùng chọn `npm run dev` (`.env.local` → hosted) để tự đăng nhập Google thật
+  thay vì bật Docker. browser-automation chỉ xác minh được nhánh CHƯA đăng nhập (4
+  route admin → proxy redirect `/login`); nhánh đã-login (CRUD/reorder/duyệt) do
+  OAuth thật nên người dùng tự bấm. Đánh đổi: CRUD test đổi dữ liệu hosted thật (1
+  dự án demo) — chấp nhận vì hosted chỉ để dev.
+- **Link "Khu quản trị" đặt ở `portal/layout.tsx` (không phải từng page)** — layout
+  bọc cả `/portal`, `/portal/[projectId]` lẫn `/portal/admin/*` và ĐÃ gọi
+  `getSessionProfile()` cho việc hiện tên (comment nói rõ: hiển thị ≠ auth check).
+  Thêm 1 điều kiện `profile?.role === "admin"` để render pill là rẻ nhất, 1 chỗ,
+  không truy vấn mới. Chấp nhận pill hiện lại trên trang admin (trùng nhẹ với
+  `AdminNav`) đổi lấy "luôn có lối về" — không cần đọc pathname trong Server
+  Component. Sai lệch có chủ đích so với "Không sửa `layout.tsx`" của plan §10
+  (yêu cầu người dùng, sau khi plan xong).
