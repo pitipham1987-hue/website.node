@@ -1,0 +1,4 @@
+# Máy-cụ-thể / dễ đổi — không commit, graphify tự sinh lại
+.graphify_python
+.graphify_root
+cache/last_query_stamp
