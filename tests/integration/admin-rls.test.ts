@@ -13,7 +13,7 @@ describe("RLS Giai đoạn 2 — chỉ admin ghi được bảng nghiệp vụ",
     await svc.from("profiles").update({ role: "pending" }).eq("id", IDS.pending);
   });
 
-  it("token client: INSERT/UPDATE/DELETE projects đều bị từ chối", async () => {
+  it("token client: INSERT + UPDATE projects bị từ chối", async () => {
     const a = await signInAs("clientA");
     const ins = await a
       .from("projects")
@@ -43,7 +43,7 @@ describe("RLS Giai đoạn 2 — chỉ admin ghi được bảng nghiệp vụ",
     expect(u.error).not.toBeNull();
   });
 
-  it("token client: INSERT/DELETE project_members bị từ chối", async () => {
+  it("token client: INSERT project_members bị từ chối", async () => {
     const a = await signInAs("clientA");
     const ins = await a
       .from("project_members")
