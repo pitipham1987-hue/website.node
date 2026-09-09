@@ -111,8 +111,13 @@ function MilestoneRow({
     initialActionState,
   );
 
-  // Đóng ô sửa khi lưu thành công.
-  if (renameState.ok && editing) setEditing(false);
+  // Đóng ô sửa khi lưu thành công — so sánh với state trước để chỉ chạy đúng
+  // lần renameState đổi (renameState giữ { ok: true } tới lần dispatch kế).
+  const [prevRenameState, setPrevRenameState] = useState(renameState);
+  if (renameState !== prevRenameState) {
+    setPrevRenameState(renameState);
+    if (renameState.ok) setEditing(false);
+  }
 
   return (
     <li className="flex items-start gap-2 rounded-lg border border-border bg-background px-3 py-2">
