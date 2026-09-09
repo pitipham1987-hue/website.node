@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 
 export const EMAILS = {
+  admin: "admin@dnkhouse.test",
   clientA: "client-a@dnkhouse.test",
   clientB: "client-b@dnkhouse.test",
   clientC: "client-c@dnkhouse.test",
