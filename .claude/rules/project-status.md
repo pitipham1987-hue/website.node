@@ -1,14 +1,15 @@
-# Trạng thái triển khai — Client Portal (Giai đoạn 1 xong · Giai đoạn 2 đang thực thi)
+# Trạng thái triển khai — Client Portal (Giai đoạn 1 xong · Giai đoạn 2 nền tảng đã merge)
 
-**Cập nhật lần cuối: 2026-09-08 (phiên "tiếp 3" — Giai đoạn 2).** Giai đoạn 1 đã
-hoàn tất từ trước (xem bên dưới). Giai đoạn 2 (khu quản trị `/portal/admin`) đã có
-**spec** (`docs/superpowers/specs/2026-09-08-portal-giai-doan-2-admin-design.md`,
-commit `fd0722b` trên `main`) và **plan** (`docs/superpowers/plans/2026-09-08-portal-giai-doan-2-admin.md`,
-commit `320a6e4` trên `main`), đang thực thi qua skill `subagent-driven-development`
-trong **git worktree** `.claude/worktrees/portal-giai-doan-2` (branch
-`worktree-portal-giai-doan-2`, base = local `main`). **6/21 task xong** (Task 1–6),
-Docker tắt suốt phiên nên phần test DB (integration RLS, E2E, script kiểm truy vấn
-thật) **bị hoãn**. Chi tiết: mục "Phiên 2026-09-08 (tiếp 3)" bên dưới.
+**Cập nhật lần cuối: 2026-09-09.** Giai đoạn 1 đã hoàn tất từ trước (xem bên dưới).
+Giai đoạn 2 (khu quản trị `/portal/admin`) đã có **spec** (`fd0722b`) và **plan**
+21 task (`320a6e4`). **Task 1–6 + stub `/portal/admin` đã merge vào `main`** (merge
+`--no-ff` `e10f070`, 2026-09-09) và **push `origin/main`**; **worktree
+`.claude/worktrees/portal-giai-doan-2` + branch `worktree-portal-giai-doan-2` đã xoá.**
+Còn Task 7–21 (UI quản trị, duyệt khách, gán `project_members`, integration RLS +
+E2E) — làm ở phiên sau, trực tiếp trên `main` hoặc worktree mới. Docker vẫn tắt nên
+phần test DB tiếp tục **bị hoãn**. Cũng trong phiên: `graphify-out/` (knowledge
+graph của repo, 502 nodes) đã commit vào `main`. Chi tiết: mục "Phiên 2026-09-09"
+bên dưới.
 
 ---
 
@@ -22,10 +23,9 @@ commit tính năng) đã hoàn tất, review sạch qua từng task lẫn tổng
 provider và **chạy Google OAuth thật thành công end-to-end**; đã cấp `role='admin'`
 cho `luongthedat@gmail.com` và nạp **1 dự án demo** (5 milestone + 3 nhật ký) qua
 service key để kiểm thử giao diện. Cùng ngày đã tách môi trường test khỏi `.env.local`
-bằng file `.env.test` được commit (chưa commit — còn trong working tree). Việc còn
-lại: không bao giờ đặt `E2E_TEST_LOGIN=1` ở môi trường thật (xem
-[[portal-env-security]]), commit/push các thay đổi đang chờ, và nạp dữ liệu **dự án
-thật** khi có.
+bằng file `.env.test` (**đã commit** — `88c1cb0`, ngoại lệ `!.env.test` trong
+`.gitignore`). Việc còn lại: không bao giờ đặt `E2E_TEST_LOGIN=1` ở môi trường thật
+(xem [[portal-env-security]]), và nạp dữ liệu **dự án thật** khi có.
 
 **Cập nhật lần cuối: 2026-09-08.** Giai đoạn 1 (đăng nhập Google + dashboard khách
 hàng, xem [[portal-architecture]]) đã **hoàn tất cả 4 slice**, đã merge vào `main`
@@ -75,7 +75,7 @@ Trước đây phải sửa `.env.local` qua lại bằng tay mỗi lần chuy�
 đúng giá trị local. **Chưa chạy** integration RLS + E2E ở phiên này vì Docker Desktop
 chưa bật (cần `npx supabase start` + `npx supabase db reset`).
 
-**Chưa commit** (các thay đổi ở mục này còn nằm trong working tree).
+**Đã commit** (`88c1cb0`, đã push `origin/main` ngày 2026-09-09).
 
 ### Phiên 2026-09-08 (tiếp 3) — Giai đoạn 2: khu quản trị `/portal/admin` (đang thực thi)
 
@@ -127,6 +127,33 @@ Xác minh chung sau Task 6: `tsc=0`, `lint` 0 lỗi, `npm run build` xanh, unit
 - 21: cập nhật docs (`portal-architecture.md`, file này, `CLAUDE.md`) + xác minh
   hoàn thành toàn kế hoạch + final review toàn nhánh + `finishing-a-development-branch`.
 
+### Phiên 2026-09-09 — Merge nền tảng Giai đoạn 2 + graphify
+
+1. **`graphify-out/` vào `main`** — chạy graphify trên repo (95 file: `src/`,
+   `supabase/`, `.claude/rules/`, `docs/superpowers/`; loại `.claude/skills/**` +
+   `.superpowers/**`). Kết quả: `graph.json` 502 nodes · 704 edges · 46 community,
+   `graph.html`, `GRAPH_REPORT.md`, `cache/`. `graphify-out/.gitignore` loại file
+   máy-cụ-thể (`.graphify_python`, `.graphify_root`, `cache/last_query_stamp`).
+   Commit `c6165bf`. Cần `pip`/`uv` package `graphifyy[sql]` để AST bắt migration SQL.
+2. **Stub `/portal/admin`** (`cf9c218`) — `/auth/callback` đã redirect admin →
+   `/portal/admin` từ Task 2 (`5cecdfd`), nhưng route chưa có → admin đăng nhập bị
+   **404**. Thêm `src/app/portal/admin/page.tsx` gọi `requireAdmin()` (non-admin →
+   `/portal`, chưa login → `/login`) + thông báo "đang xây dựng". Trang làm việc
+   thật vẫn thuộc Task 16–18.
+3. **Merge worktree → `main`** (`e10f070`, `--no-ff`) — fast-forward được nhưng
+   dùng `--no-ff` cho rõ lịch sử. Kiểm trước merge (trên nhánh): `tsc` sạch, unit
+   **59/59**, `build` OK, `lint` 0 lỗi. Kiểm sau merge (trên `main`): `tsc` sạch,
+   unit 59/59, `build` OK.
+4. **Xoá worktree + branch** — `git worktree remove` + `git branch -d
+   worktree-portal-giai-doan-2`. `.claude/worktrees/` giờ rỗng. Ledger SDD
+   `.superpowers/sdd/...` (gitignored) mất theo worktree.
+5. **Push `origin/main`** — `main` đồng bộ `origin/main` sau nhiều phiên chỉ giữ local.
+
+**Task 7–21 còn lại:** làm trực tiếp trên `main` hoặc tạo worktree mới (nếu tạo
+worktree, push `main` trước hoặc `git reset --hard main` trong worktree — xem quyết
+định "EnterWorktree branch từ origin/main" bên dưới). Không còn ledger SDD cũ; bắt
+đầu lại vòng `subagent-driven-development` từ Task 7 theo plan `320a6e4`.
+
 ## Trạng thái từng phần
 
 | Phần | Trạng thái | Ghi chú |
@@ -136,59 +163,39 @@ Xác minh chung sau Task 6: `tsc=0`, `lint` 0 lỗi, `npm run build` xanh, unit
 | Slice 3 — Dashboard danh sách dự án | ✅ Xong, đã merge | 6 task. 1 regression liên-slice được phát hiện + vá (đổi UI làm vỡ test Slice 2) |
 | Slice 4 — Chi tiết dự án (milestone + nhật ký) | ✅ Xong, đã merge | 7 task. Đã kiểm chứng độc lập qua curl thật: không rò rỉ dữ liệu chéo giữa khách hàng |
 | Merge vào `main` | ✅ Xong | Test xanh trên kết quả merge: 34/34 unit+integration, 15/15 E2E, `tsc`/`lint`/`build` sạch |
-| Push lên `origin/main` | ✅ Xong | `main` == `origin/main` tại `f50b335` |
+| Push lên `origin/main` | ✅ Xong (2026-09-09) | `main` == `origin/main` sau merge Giai đoạn 2 (`e10f070`) |
 | Supabase hosted + OAuth thật | ✅ Xong (2026-09-08) | Project `obcfgqkaokghxgauomxo` (`ap-northeast-1`). 3 migration đã `supabase db push`. Google provider bật, đăng nhập thật OK. `.env.local` trỏ hosted. 1 dự án demo + admin `luongthedat@gmail.com` nạp qua service key |
-| Môi trường test local (`.env.test`) | ✅ Xong (2026-09-08), **chưa commit** | `npm run test` + `npm run test:e2e` tự nạp `.env.test` (được commit) → không cần đổi `.env.local`. Unit 25/25 pass, `tsc` sạch; integration RLS + E2E chưa chạy lại phiên này (thiếu Docker) |
+| Môi trường test local (`.env.test`) | ✅ Xong, **đã commit** (`88c1cb0`) + push | `npm run test` + `npm run test:e2e` tự nạp `.env.test` → không cần đổi `.env.local`. Unit pass, `tsc` sạch; integration RLS + E2E chưa chạy lại (thiếu Docker) |
 | Giai đoạn 2 — spec + plan | ✅ Xong | Spec `fd0722b`, plan 21 task `320a6e4` (đều trên `main`) |
-| Giai đoạn 2 — thực thi (Task 1–6/21) | 🟡 Đang làm | Worktree `.claude/worktrees/portal-giai-doan-2`. DAL `requireAdmin`, `/auth/callback` theo role, `admin-validation`, `milestone-order`, `admin-queries`, `admin-actions` (CRUD dự án). Task 1–5 review CLEAN, Task 6 chờ review |
-| Giai đoạn 2 — Task 7–21 | ⬜ Chưa làm | actions mốc/nhật ký/khách, 7 component, 4 page, integration RLS + E2E (cần Docker), docs + final review |
+| Giai đoạn 2 — thực thi (Task 1–6 + stub) | ✅ Đã merge `main` (`e10f070`, 2026-09-09) | DAL `requireAdmin`/`postLoginPath`, `/auth/callback` theo role, `admin-validation`, `milestone-order`, `admin-queries`, `admin-actions` (CRUD dự án), stub `/portal/admin`. Task 1–6 review CLEAN (Task 5–6 ⚠ chưa kiểm DB thật). Worktree + branch đã xoá |
+| Giai đoạn 2 — Task 7–21 | ⬜ Chưa làm | actions mốc/nhật ký/khách, 7 component, page làm việc thật, integration RLS + E2E (cần Docker), docs + final review. Làm trên `main` hoặc worktree mới |
+| Knowledge graph (`graphify-out/`) | ✅ Xong (2026-09-09), đã commit `c6165bf` | 502 nodes. Cập nhật: `graphify . --update` từ repo root |
 
 ## Bước tiếp theo (phiên sau)
 
-**Việc dọn dẹp ngay (do phiên 2026-09-08 tạo ra):**
+**Tiếp tục Giai đoạn 2 (ưu tiên):**
 
-1. **Đổi mật khẩu DB Supabase hosted** — mật khẩu đặt lúc tạo project đã bị lộ trong
-   transcript khi chạy `supabase db push --db-url`. Studio → Project Settings →
-   Database → Reset database password. App không dùng mật khẩu này (chỉ
-   `NEXT_PUBLIC_SUPABASE_*` + service key) nên đổi không ảnh hưởng.
-2. **Commit + push `main` lên `origin/main`** — chưa push: `1328c49`, `586cdd9`
-   (docs) + thay đổi `.env.test` của phiên "(tiếp)" vẫn đang trong working tree,
-   **chưa commit**.
-3. **Chạy full test khi bật được Docker** — `npx supabase start` +
-   `npx supabase db reset`, rồi `npm run test` (integration RLS) và `npm run test:e2e`,
-   để xác nhận `.env.test` hoạt động end-to-end. Phiên thêm `.env.test` chỉ chạy được
-   unit (thiếu Docker).
-4. ~~Chú ý `.env.local` đang trỏ hosted khi chạy test~~ — **đã xử lý (phiên
-   2026-09-08 "(tiếp)"):** `.env.test` (được commit) + `npm run test` /
-   `playwright.config.ts` tự nạp. **Không còn phải đổi `.env.local` qua lại.** Chi
-   tiết ở mục "Phiên 2026-09-08 (tiếp)" bên trên và [[portal-env-security]].
-
-**Tiếp tục Giai đoạn 2 (ưu tiên — đang dở):**
-
-5. **Bật Docker Desktop** → `npx supabase start` + `npx supabase db reset`. Bắt buộc
+1. **Bật Docker Desktop** → `npx supabase start` + `npx supabase db reset`. Bắt buộc
    cho Task 19 (integration RLS), Task 20 (E2E), và để chạy lại phần kiểm truy
    vấn/ghi thật đã hoãn ở Task 5–6 (và sẽ hoãn ở Task 7, 9).
-6. **Resume vòng lặp `subagent-driven-development` từ Task 7.** Vào worktree:
-   `EnterWorktree path=.claude/worktrees/portal-giai-doan-2` (hoặc `cd` vào đó nếu
-   dùng CLI thô), đọc ledger `.superpowers/sdd/2026-09-08-portal-giai-doan-2-admin/progress.md`,
-   tiếp tục từ task đầu tiên chưa `complete`. Model: haiku cho task cơ học, sonnet
-   cho task tích hợp + mọi review.
-7. **Cuối kế hoạch:** final review toàn nhánh (model mạnh nhất) →
-   `finishing-a-development-branch` → merge `main` + push `origin/main`. Xoá worktree
-   (`ExitWorktree remove` hoặc `rm -rf`) + workspace SDD.
+2. **Bắt đầu lại vòng `subagent-driven-development` từ Task 7** theo plan `320a6e4`.
+   Worktree + ledger SDD cũ đã mất khi xoá nhánh — dựng workspace SDD mới. Làm trực
+   tiếp trên `main` hoặc worktree mới (nếu worktree: push `main` trước, hoặc
+   `git reset --hard main` trong worktree — xem quyết định "EnterWorktree" bên dưới).
+   Model: haiku cho task cơ học, sonnet cho task tích hợp + mọi review.
+3. **Cuối kế hoạch:** final review toàn nhánh → `finishing-a-development-branch` →
+   merge `main` + push. Nếu dùng worktree thì xoá worktree + workspace SDD sau merge.
 
-**Việc dọn dẹp còn tồn (từ các phiên trước — chưa xử lý):**
+**Việc dọn dẹp còn tồn:**
 
-8. **`main` đang đi trước `origin/main`** — `origin/main` = `88c1cb0`; local `main`
-   có thêm `586cdd9`, `1328c49` (docs), `fd0722b` (spec GĐ2), `320a6e4` (plan GĐ2),
-   `88c1cb0`... cần commit/push khi thuận tiện (không chặn GĐ2 vì worktree base là
-   local `main`).
-9. **Đổi mật khẩu DB Supabase hosted** (bị lộ trong transcript phiên trước) —
-   Studio → Project Settings → Database → Reset. App không dùng mật khẩu này.
-10. **Nhập dữ liệu dự án thật** (khi có khách) — sau Giai đoạn 2 sẽ làm qua
-    `/portal/admin`, không cần Studio. Có thể xoá dự án demo "Trợ lý AI nội bộ — Demo".
-11. **(Tuỳ chọn)** `roleToScreen` (`src/lib/portal/session.ts`) vẫn chỉ dùng trong
-    unit test — Giai đoạn 2 không dùng tới; cân nhắc dọn bỏ ở Task 21 hoặc để lại.
+4. **Đổi mật khẩu DB Supabase hosted** — mật khẩu đặt lúc tạo project bị lộ trong
+   transcript khi chạy `supabase db push --db-url`. Studio → Project Settings →
+   Database → Reset. App không dùng mật khẩu này (chỉ `NEXT_PUBLIC_SUPABASE_*` +
+   service key) nên đổi không ảnh hưởng.
+5. **Nhập dữ liệu dự án thật** (khi có khách) — sau Giai đoạn 2 sẽ làm qua
+   `/portal/admin`, không cần Studio. Có thể xoá dự án demo "Trợ lý AI nội bộ — Demo".
+6. **(Tuỳ chọn)** `roleToScreen` (`src/lib/portal/session.ts`) vẫn chỉ dùng trong
+   unit test — Giai đoạn 2 không dùng tới; cân nhắc dọn bỏ ở Task 21 hoặc để lại.
 
 ## Quyết định quan trọng đã đưa ra (và lý do)
 
@@ -309,3 +316,22 @@ Xác minh chung sau Task 6: `tsc=0`, `lint` 0 lỗi, `npm run build` xanh, unit
   Task cơ học/thuần + `tsc`/`lint`/`build` vẫn xác minh đầy đủ. Rủi ro: shape embed
   Supabase trong `admin-queries.ts` chưa chạy thật (tsc chấp nhận cast nhưng runtime
   chưa xác nhận).
+
+### Phiên 2026-09-09
+
+- **Merge Giai đoạn 2 dở dang (Task 1–6) vào `main`** — người dùng chốt merge sớm
+  thay vì đợi hết 21 task. Phần đã merge là code nền (DAL guard, hàm thuần, query/
+  action đọc-ghi chưa gắn UID) + stub page; không phá luồng khách hiện có. Đánh đổi:
+  `admin-queries`/`admin-actions` vào `main` khi chưa kiểm DB thật (Docker tắt).
+- **Thêm stub `/portal/admin` khi merge** — Task 2 (`5cecdfd`) đã đấu
+  `postLoginPath("admin") → "/portal/admin"` nhưng route thuộc Task 16–18. Merge
+  nguyên trạng ⇒ admin login 404. Chọn thêm page tối giản (gọi `requireAdmin()` +
+  thông báo) thay vì hoãn merge hoặc lùi Task 2 — rẻ, không chặn, tự thay khi Task
+  16–18 làm trang thật.
+- **Merge `--no-ff` dù fast-forward được** — nhánh chứa toàn bộ `main` nên FF được,
+  nhưng `--no-ff` giữ 1 merge commit gom nhóm Giai đoạn 2 trong lịch sử (nhất quán
+  với cách merge Giai đoạn 1).
+- **`graphify-out/` commit vào repo (kể cả `cache/`)** — người dùng chọn commit thay
+  vì gitignore, để clone về là `graphify query` / `--update` chạy ngay. Chỉ gitignore
+  file máy-cụ-thể (`graphify-out/.gitignore`). Loại `.claude/skills/**` +
+  `.superpowers/**` khỏi corpus (scaffolding, không phải nội dung dự án).
