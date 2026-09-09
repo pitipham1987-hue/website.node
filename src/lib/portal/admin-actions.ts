@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/portal/session";
 import {
   validateDirection,
   validateMilestoneTitle,
+  validateProjectIds,
   validateProjectInput,
   validateUpdateInput,
 } from "@/lib/portal/admin-validation";
@@ -272,4 +273,75 @@ export async function deleteUpdate(
   if (error) throw error;
 
   revalidateProject(projectId, { clientView: true });
+}
+
+// ============ Khách & thành viên ============
+
+export async function approveAndAssign(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+  const profileId = String(formData.get("profileId") ?? "");
+  const projectIds = formData
+    .getAll("projectIds")
+    .map((v) => String(v));
+  const parsed = validateProjectIds(projectIds);
+  if (!parsed.ok) return { error: parsed.error };
+
+  const supabase = await createClient();
+
+  const { error: roleError } = await supabase
+    .from("profiles")
+    .update({ role: "client" })
+    .eq("id", profileId)
+    .eq("role", "pending");
+  if (roleError) return { error: GENERIC_ERROR };
+
+  if (parsed.value.length > 0) {
+    const { error: memberError } = await supabase
+      .from("project_members")
+      .insert(
+        parsed.value.map((projectId) => ({
+          project_id: projectId,
+          profile_id: profileId,
+        })),
+      );
+    if (memberError) return { error: GENERIC_ERROR };
+  }
+
+  revalidatePath("/portal/admin");
+  revalidatePath("/portal");
+  redirect("/portal/admin");
+}
+
+export async function addMember(
+  projectId: string,
+  profileId: string,
+): Promise<void> {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("project_members")
+    .insert({ project_id: projectId, profile_id: profileId });
+  if (error) throw error;
+
+  revalidateProject(projectId, { list: true, clientView: true });
+}
+
+export async function removeMember(
+  projectId: string,
+  profileId: string,
+): Promise<void> {
+  await requireAdmin();
+  const supabase = await createClient();
+  // Chỉ xoá dòng project_members — KHÔNG đụng profiles.role.
+  const { error } = await supabase
+    .from("project_members")
+    .delete()
+    .eq("project_id", projectId)
+    .eq("profile_id", profileId);
+  if (error) throw error;
+
+  revalidateProject(projectId, { list: true, clientView: true });
 }
