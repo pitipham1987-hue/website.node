@@ -8,6 +8,7 @@ import {
   validateDirection,
   validateMilestoneTitle,
   validateProjectInput,
+  validateUpdateInput,
 } from "@/lib/portal/admin-validation";
 import { reorderMilestones } from "@/lib/portal/milestone-order";
 import type { ActionState } from "@/lib/portal/admin-action-state";
@@ -207,6 +208,68 @@ export async function reorderMilestone(
       .eq("project_id", projectId);
     if (updError) throw updError;
   }
+
+  revalidateProject(projectId, { clientView: true });
+}
+
+// ============ Nhật ký cập nhật ============
+
+export async function addUpdate(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+  const projectId = String(formData.get("projectId") ?? "");
+  const parsed = validateUpdateInput(formData);
+  if (!parsed.ok) return { fieldErrors: parsed.fieldErrors };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("updates").insert({
+    project_id: projectId,
+    body: parsed.value.body,
+    author_name: parsed.value.authorName,
+  });
+  if (error) return { error: GENERIC_ERROR };
+
+  revalidateProject(projectId, { list: true, clientView: true });
+  return { ok: true };
+}
+
+export async function updateUpdate(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+  const projectId = String(formData.get("projectId") ?? "");
+  const updateId = String(formData.get("updateId") ?? "");
+  const parsed = validateUpdateInput(formData);
+  if (!parsed.ok) return { fieldErrors: parsed.fieldErrors };
+
+  const supabase = await createClient();
+  // KHÔNG đổi created_at.
+  const { error } = await supabase
+    .from("updates")
+    .update({ body: parsed.value.body, author_name: parsed.value.authorName })
+    .eq("id", updateId)
+    .eq("project_id", projectId);
+  if (error) return { error: GENERIC_ERROR };
+
+  revalidateProject(projectId, { clientView: true });
+  return { ok: true };
+}
+
+export async function deleteUpdate(
+  projectId: string,
+  updateId: string,
+): Promise<void> {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("updates")
+    .delete()
+    .eq("id", updateId)
+    .eq("project_id", projectId);
+  if (error) throw error;
 
   revalidateProject(projectId, { clientView: true });
 }
