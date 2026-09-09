@@ -43,7 +43,8 @@
 | `src/lib/portal/admin-validation.ts` | Hàm thuần, không I/O: `validateProjectInput`, `validateMilestoneTitle`, `validateUpdateInput`, `validateProjectIds`, `validateDirection`. Trả `{ ok: true; value } \| { ok: false; error?; fieldErrors }` |
 | `src/lib/portal/milestone-order.ts` | Hàm thuần `reorderMilestones(list, targetId, direction)` → danh sách đã sắp lại, `position` đánh số `0..n-1` |
 | `src/lib/portal/admin-queries.ts` | `server-only`: `getAdminProjectList`, `getPendingProfiles`, `getPendingProfile`, `getClientProfiles`, `getAdminProjectDetail`, `getAssignableProjects`, `getAssignableClients` |
-| `src/lib/portal/admin-actions.ts` | `"use server"`: `createProject`, `updateProject`, `deleteProject`, `addMilestone`, `renameMilestone`, `toggleMilestone`, `deleteMilestone`, `reorderMilestone`, `addUpdate`, `updateUpdate`, `deleteUpdate`, `approveAndAssign`, `addMember`, `removeMember` + type `ActionState` + `initialActionState` |
+| `src/lib/portal/admin-action-state.ts` | Type `ActionState` + `initialActionState` (file thường — `"use server"` không export được non-async) |
+| `src/lib/portal/admin-actions.ts` | `"use server"`: `createProject`, `updateProject`, `deleteProject`, `addMilestone`, `renameMilestone`, `toggleMilestone`, `deleteMilestone`, `reorderMilestone`, `addUpdate`, `updateUpdate`, `deleteUpdate`, `approveAndAssign`, `addMember`, `removeMember` |
 | `src/components/portal/admin/AdminNav.tsx` | Server Component: thanh phụ "Khu quản trị" + link "Xem giao diện khách" → `/portal` |
 | `src/components/portal/admin/DeleteButton.tsx` | `"use client"`: bọc `confirm()` rồi submit form Server Action; prop `action` (đã `.bind`), `confirmText`, `label` |
 | `src/components/portal/admin/ProjectForm.tsx` | `"use client"`: tạo/sửa dự án; `useActionState`; lỗi theo field; trạng thái pending |
@@ -155,7 +156,7 @@ export interface AssignableClient { id: string; email: string; fullName: string 
 export function getAssignableClients(projectId: string): Promise<AssignableClient[]>;
 ```
 
-`src/lib/portal/admin-actions.ts`:
+`src/lib/portal/admin-action-state.ts` (**KHÔNG** `"use server"` — file `"use server"` chỉ được export async function, nên `ActionState` + `initialActionState` phải nằm ở file thường; `admin-actions.ts` và mọi component import từ đây):
 
 ```ts
 export interface ActionState {
@@ -164,7 +165,11 @@ export interface ActionState {
   fieldErrors?: Record<string, string>;
 }
 export const initialActionState: ActionState = {};
+```
 
+`src/lib/portal/admin-actions.ts` (`"use server"`; `import { type ActionState, initialActionState } from "@/lib/portal/admin-action-state"`):
+
+```ts
 // (prev, formData) — dùng với useActionState:
 export function createProject(prev: ActionState, formData: FormData): Promise<ActionState>; // thành công -> redirect("/portal/admin/projects/<id>")
 export function updateProject(prev: ActionState, formData: FormData): Promise<ActionState>; // formData: projectId, name, status_label, summary
@@ -1112,13 +1117,26 @@ git commit -m "feat(portal): admin-queries — truy vấn đọc cho khu quản 
 ## Task 6: `admin-actions.ts` — CRUD dự án
 
 **Files:**
+- Tạo mới: `src/lib/portal/admin-action-state.ts`
 - Tạo mới: `src/lib/portal/admin-actions.ts`
 
 **Interfaces:**
 - Consumes: `requireAdmin` (Task 1), `validateProjectInput` (Task 3), `createClient` (`@/lib/supabase/server`), `revalidatePath` (`next/cache`), `redirect` (`next/navigation`).
-- Produces: `ActionState`, `initialActionState`, `createProject`, `updateProject`, `deleteProject` (xem "Bản đồ interface dùng chung"). Các action mốc/nhật ký/thành viên thêm ở Task 7–9 **cùng file này**.
+- Produces: `ActionState`, `initialActionState` (trong `admin-action-state.ts`); `createProject`, `updateProject`, `deleteProject` (trong `admin-actions.ts`) — xem "Bản đồ interface dùng chung". Các action mốc/nhật ký/thành viên thêm ở Task 7–9 **cùng `admin-actions.ts`**.
 
-- [ ] **Bước 1: Viết `src/lib/portal/admin-actions.ts`**
+- [ ] **Bước 1a: Viết `src/lib/portal/admin-action-state.ts`** (file thường, KHÔNG `"use server"`)
+
+```ts
+export interface ActionState {
+  ok?: boolean;
+  error?: string;
+  fieldErrors?: Record<string, string>;
+}
+
+export const initialActionState: ActionState = {};
+```
+
+- [ ] **Bước 1b: Viết `src/lib/portal/admin-actions.ts`**
 
 ```ts
 "use server";
@@ -1128,14 +1146,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/portal/session";
 import { validateProjectInput } from "@/lib/portal/admin-validation";
-
-export interface ActionState {
-  ok?: boolean;
-  error?: string;
-  fieldErrors?: Record<string, string>;
-}
-
-export const initialActionState: ActionState = {};
+import type { ActionState } from "@/lib/portal/admin-action-state";
 
 const GENERIC_ERROR =
   "Không lưu được thay đổi. Vui lòng thử lại; nếu vẫn lỗi hãy báo DNK House.";
@@ -1255,7 +1266,7 @@ Kỳ vọng: insert trả `{ id }`, update/delete `err: null`.
 - [ ] **Bước 4: Commit**
 
 ```bash
-git add src/lib/portal/admin-actions.ts
+git add src/lib/portal/admin-action-state.ts src/lib/portal/admin-actions.ts
 git commit -m "feat(portal): admin-actions — CRUD dự án (create/update/delete)"
 ```
 
@@ -1779,7 +1790,7 @@ git commit -m "feat(portal): token trạng thái + DeleteButton + AdminNav"
 - Tạo mới: `src/app/portal/admin/projects/new/page.tsx`
 
 **Interfaces:**
-- Consumes: `useActionState` (`react`), `createProject`, `updateProject`, `ActionState`, `initialActionState` (Task 6), `requireAdmin` (Task 1), `AdminNav` (Task 10).
+- Consumes: `useActionState` (`react`), `createProject`, `updateProject` (Task 6, từ `@/lib/portal/admin-actions`), `initialActionState` (Task 6, từ `@/lib/portal/admin-action-state`), `requireAdmin` (Task 1), `AdminNav` (Task 10).
 - Produces:
   - `ProjectForm({ mode, project }: { mode: "create" | "edit"; project?: { id: string; name: string; statusLabel: string; summary: string | null } })` — `"use client"`.
 
@@ -1789,11 +1800,8 @@ git commit -m "feat(portal): token trạng thái + DeleteButton + AdminNav"
 "use client";
 
 import { useActionState } from "react";
-import {
-  createProject,
-  initialActionState,
-  updateProject,
-} from "@/lib/portal/admin-actions";
+import { createProject, updateProject } from "@/lib/portal/admin-actions";
+import { initialActionState } from "@/lib/portal/admin-action-state";
 
 interface ProjectFormProps {
   mode: "create" | "edit";
@@ -1954,7 +1962,7 @@ git commit -m "feat(portal): ProjectForm + trang tạo dự án /portal/admin/pr
 - Tạo mới: `src/components/portal/admin/MilestoneManager.tsx`
 
 **Interfaces:**
-- Consumes: `useActionState`, `useState`, `useRef`, `useTransition` (`react`); `addMilestone`, `renameMilestone`, `toggleMilestone`, `deleteMilestone`, `reorderMilestone`, `initialActionState` (Task 7); `formatVnDate` (`@/lib/portal/format`); `lucide-react`; `AdminMilestone` (Task 5).
+- Consumes: `useActionState`, `useState`, `useRef`, `useTransition` (`react`); `addMilestone`, `renameMilestone`, `toggleMilestone`, `deleteMilestone`, `reorderMilestone` (Task 7, từ `@/lib/portal/admin-actions`); `initialActionState` (từ `@/lib/portal/admin-action-state`); `formatVnDate` (`@/lib/portal/format`); `lucide-react`; `AdminMilestone` (Task 5).
 - Produces: `MilestoneManager({ projectId, milestones }: { projectId: string; milestones: AdminMilestone[] })` — `"use client"`. Chứa child `MilestoneRow` cùng file.
 
 - [ ] **Bước 1: Viết `src/components/portal/admin/MilestoneManager.tsx`**
@@ -1967,11 +1975,11 @@ import { Check, ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react";
 import {
   addMilestone,
   deleteMilestone,
-  initialActionState,
   renameMilestone,
   reorderMilestone,
   toggleMilestone,
 } from "@/lib/portal/admin-actions";
+import { initialActionState } from "@/lib/portal/admin-action-state";
 import { formatVnDate } from "@/lib/portal/format";
 import type { AdminMilestone } from "@/lib/portal/admin-queries";
 
@@ -2213,7 +2221,7 @@ git commit -m "feat(portal): MilestoneManager — quản lý mốc (toggle/sửa
 - Tạo mới: `src/components/portal/admin/UpdateManager.tsx`
 
 **Interfaces:**
-- Consumes: `useActionState`, `useState`, `useRef` (`react`); `addUpdate`, `updateUpdate`, `deleteUpdate`, `initialActionState` (Task 8); `formatVnDate`; `lucide-react`; `AdminUpdate` (Task 5).
+- Consumes: `useActionState`, `useState`, `useRef` (`react`); `addUpdate`, `updateUpdate`, `deleteUpdate` (Task 8, từ `@/lib/portal/admin-actions`); `initialActionState` (từ `@/lib/portal/admin-action-state`); `formatVnDate`; `lucide-react`; `AdminUpdate` (Task 5).
 - Produces: `UpdateManager({ projectId, updates, defaultAuthorName }: { projectId: string; updates: AdminUpdate[]; defaultAuthorName: string })` — `"use client"`. Child `UpdateRow` cùng file.
 
 - [ ] **Bước 1: Viết `src/components/portal/admin/UpdateManager.tsx`**
@@ -2226,9 +2234,9 @@ import { Pencil, Trash2 } from "lucide-react";
 import {
   addUpdate,
   deleteUpdate,
-  initialActionState,
   updateUpdate,
 } from "@/lib/portal/admin-actions";
+import { initialActionState } from "@/lib/portal/admin-action-state";
 import { formatVnDate } from "@/lib/portal/format";
 import type { AdminUpdate } from "@/lib/portal/admin-queries";
 
@@ -2554,7 +2562,7 @@ git commit -m "feat(portal): MemberList — danh sách + thêm/gỡ thành viên
 - Tạo mới: `src/components/portal/admin/ApproveAssignForm.tsx`
 
 **Interfaces:**
-- Consumes: `useActionState` (`react`); `approveAndAssign`, `initialActionState` (Task 9); `AssignableProject` (Task 5).
+- Consumes: `useActionState` (`react`); `approveAndAssign` (Task 9, từ `@/lib/portal/admin-actions`); `initialActionState` (từ `@/lib/portal/admin-action-state`); `AssignableProject` (Task 5).
 - Produces: `ApproveAssignForm({ profileId, projects }: { profileId: string; projects: AssignableProject[] })` — `"use client"`.
 
 - [ ] **Bước 1: Viết `src/components/portal/admin/ApproveAssignForm.tsx`**
@@ -2563,7 +2571,8 @@ git commit -m "feat(portal): MemberList — danh sách + thêm/gỡ thành viên
 "use client";
 
 import { useActionState } from "react";
-import { approveAndAssign, initialActionState } from "@/lib/portal/admin-actions";
+import { approveAndAssign } from "@/lib/portal/admin-actions";
+import { initialActionState } from "@/lib/portal/admin-action-state";
 import type { AssignableProject } from "@/lib/portal/admin-queries";
 
 export function ApproveAssignForm({

@@ -1,3 +1,17 @@
+# Trạng thái triển khai — Client Portal (Giai đoạn 1 xong · Giai đoạn 2 đang thực thi)
+
+**Cập nhật lần cuối: 2026-09-08 (phiên "tiếp 3" — Giai đoạn 2).** Giai đoạn 1 đã
+hoàn tất từ trước (xem bên dưới). Giai đoạn 2 (khu quản trị `/portal/admin`) đã có
+**spec** (`docs/superpowers/specs/2026-09-08-portal-giai-doan-2-admin-design.md`,
+commit `fd0722b` trên `main`) và **plan** (`docs/superpowers/plans/2026-09-08-portal-giai-doan-2-admin.md`,
+commit `320a6e4` trên `main`), đang thực thi qua skill `subagent-driven-development`
+trong **git worktree** `.claude/worktrees/portal-giai-doan-2` (branch
+`worktree-portal-giai-doan-2`, base = local `main`). **6/21 task xong** (Task 1–6),
+Docker tắt suốt phiên nên phần test DB (integration RLS, E2E, script kiểm truy vấn
+thật) **bị hoãn**. Chi tiết: mục "Phiên 2026-09-08 (tiếp 3)" bên dưới.
+
+---
+
 # Trạng thái triển khai — Giai đoạn 1 (Client Portal)
 
 **Tổng kết toàn phiên:** Giai đoạn 1 (client portal đăng nhập Google — 4 slice, 33
@@ -63,6 +77,56 @@ chưa bật (cần `npx supabase start` + `npx supabase db reset`).
 
 **Chưa commit** (các thay đổi ở mục này còn nằm trong working tree).
 
+### Phiên 2026-09-08 (tiếp 3) — Giai đoạn 2: khu quản trị `/portal/admin` (đang thực thi)
+
+**Bối cảnh:** brainstorm + spec Giai đoạn 2 đã xong (`fd0722b`), plan 21 task đã
+xong (`320a6e4`). Người dùng chọn thực thi qua `subagent-driven-development` trong
+**git worktree** (như Giai đoạn 1).
+
+**Thiết lập worktree:**
+- `EnterWorktree name=portal-giai-doan-2` → `.claude/worktrees/portal-giai-doan-2`,
+  branch `worktree-portal-giai-doan-2`.
+- **Lưu ý:** `EnterWorktree` mặc định branch từ `origin/main` (`worktree.baseRef=fresh`),
+  mà `origin/main` (`88c1cb0`) đang **sau** local `main` (`320a6e4`) → worktree
+  ban đầu thiếu spec + plan. Đã `git reset --hard main` trong worktree để lấy đủ.
+- `npm install`, `npm run build` (sinh `.next/types` cho `PageProps`/`LayoutProps`),
+  baseline: `tsc=0`, `lint` 0 lỗi (2 warning cũ ở `LoginButton.tsx` +
+  `database.types.ts`), unit **25/25**.
+- Docker Desktop **TẮT** suốt phiên → chưa chạy được `npx supabase start` →
+  integration RLS + E2E + mọi script kiểm truy vấn/ghi thật (Bước 3 của Task 5,6,…)
+  **HOÃN**.
+
+**Đã làm (6/21 task, mỗi task 1 subagent + 1 review độc lập):**
+
+| Task | Commit | Nội dung | Review |
+|---|---|---|---|
+| 1 | `64b67d5` | `resolveAdminAccess` + `requireAdmin` + `postLoginPath` vào `src/lib/portal/session.ts` (thuần + async, 8 unit test) | CLEAN |
+| 2 | `5cecdfd` | `src/app/auth/callback/route.ts` redirect theo `role` (admin → `/portal/admin`) | CLEAN |
+| 3 | `513b8bc` | `src/lib/portal/admin-validation.ts` — 5 hàm validate thuần (20 unit test) | CLEAN |
+| 4 | `b050f21` | `src/lib/portal/milestone-order.ts` — `reorderMilestones` thuần (6 unit test) | CLEAN |
+| 5 | `9031806` | `src/lib/portal/admin-queries.ts` — 7 hàm truy vấn đọc (`server-only`) | CLEAN (⚠ chưa kiểm DB thật) |
+| 6 | `f0cbaf3` | `src/lib/portal/admin-actions.ts` (`"use server"`) — `createProject`/`updateProject`/`deleteProject` + `admin-action-state.ts` (type `ActionState` + `initialActionState`) | CLEAN (⚠ chưa kiểm DB thật) |
+
+Xác minh chung sau Task 6: `tsc=0`, `lint` 0 lỗi, `npm run build` xanh, unit
+**59/59** pass (25 cũ + 8 `require-admin` + 20 `admin-validation` + 6 `milestone-order`).
+
+- Plan đã sửa 1 lần: `c3a0b8d` (tách `ActionState`/`initialActionState` — xem "Quyết
+  định" bên dưới).
+- Ledger SDD: `.superpowers/sdd/2026-09-08-portal-giai-doan-2-admin/progress.md`
+  (**gitignored**, chỉ tồn tại trong worktree). Task brief + report + review từng
+  task cũng ở thư mục đó.
+
+**Còn lại (Task 7–21):**
+- 7–9: `admin-actions.ts` thêm action cho mốc / nhật ký / khách+thành viên.
+- 10–15: components (`AdminNav`, `DeleteButton`, `ProjectForm`, `MilestoneManager`,
+  `UpdateManager`, `MemberList`, `ApproveAssignForm`) + token `--danger`/`--success`
+  vào `globals.css`.
+- 16–18: pages (`/portal/admin`, `projects/new`, `projects/[id]`, `pending/[profileId]`).
+- 19: integration RLS (`tests/integration/admin-rls.test.ts`) — **cần Docker**.
+- 20: E2E (`tests/e2e/admin.spec.ts`, thêm `EMAILS.admin`) — **cần Docker**.
+- 21: cập nhật docs (`portal-architecture.md`, file này, `CLAUDE.md`) + xác minh
+  hoàn thành toàn kế hoạch + final review toàn nhánh + `finishing-a-development-branch`.
+
 ## Trạng thái từng phần
 
 | Phần | Trạng thái | Ghi chú |
@@ -75,7 +139,9 @@ chưa bật (cần `npx supabase start` + `npx supabase db reset`).
 | Push lên `origin/main` | ✅ Xong | `main` == `origin/main` tại `f50b335` |
 | Supabase hosted + OAuth thật | ✅ Xong (2026-09-08) | Project `obcfgqkaokghxgauomxo` (`ap-northeast-1`). 3 migration đã `supabase db push`. Google provider bật, đăng nhập thật OK. `.env.local` trỏ hosted. 1 dự án demo + admin `luongthedat@gmail.com` nạp qua service key |
 | Môi trường test local (`.env.test`) | ✅ Xong (2026-09-08), **chưa commit** | `npm run test` + `npm run test:e2e` tự nạp `.env.test` (được commit) → không cần đổi `.env.local`. Unit 25/25 pass, `tsc` sạch; integration RLS + E2E chưa chạy lại phiên này (thiếu Docker) |
-| Giai đoạn 2 (`/portal/admin`) | ⬜ Chưa bắt đầu | Cần spec riêng — xem mục "Bước tiếp theo" |
+| Giai đoạn 2 — spec + plan | ✅ Xong | Spec `fd0722b`, plan 21 task `320a6e4` (đều trên `main`) |
+| Giai đoạn 2 — thực thi (Task 1–6/21) | 🟡 Đang làm | Worktree `.claude/worktrees/portal-giai-doan-2`. DAL `requireAdmin`, `/auth/callback` theo role, `admin-validation`, `milestone-order`, `admin-queries`, `admin-actions` (CRUD dự án). Task 1–5 review CLEAN, Task 6 chờ review |
+| Giai đoạn 2 — Task 7–21 | ⬜ Chưa làm | actions mốc/nhật ký/khách, 7 component, 4 page, integration RLS + E2E (cần Docker), docs + final review |
 
 ## Bước tiếp theo (phiên sau)
 
@@ -97,19 +163,32 @@ chưa bật (cần `npx supabase start` + `npx supabase db reset`).
    `playwright.config.ts` tự nạp. **Không còn phải đổi `.env.local` qua lại.** Chi
    tiết ở mục "Phiên 2026-09-08 (tiếp)" bên trên và [[portal-env-security]].
 
-**Việc tính năng:**
+**Tiếp tục Giai đoạn 2 (ưu tiên — đang dở):**
 
-5. **Nhập dữ liệu dự án thật** (khi có khách thật) — vẫn làm tay qua Studio hoặc
-   service key: `projects`, `milestones`, `updates`, duyệt khách `pending → client`,
-   gán `project_members`. Giai đoạn 1 chưa có UI quản trị. Có thể xoá dự án demo
-   "Trợ lý AI nội bộ — Demo" khi không cần nữa.
-6. **Brainstorm + viết spec Giai đoạn 2** (`/portal/admin`) trước khi viết plan —
-   CRUD dự án/milestone/update, duyệt khách, gán `project_members`, thay thế thao
-   tác thủ công ở bước 5. Dùng skill `brainstorming` trước, không nhảy thẳng vào
-   `writing-plans`.
-7. **(Tuỳ chọn, không chặn)** `roleToScreen` (`src/lib/portal/session.ts`) hiện chỉ
-   được dùng trong unit test, không có call site trong code sản phẩm — cân nhắc
-   dùng thật khi làm Giai đoạn 2 hoặc dọn bỏ nếu vẫn không cần.
+5. **Bật Docker Desktop** → `npx supabase start` + `npx supabase db reset`. Bắt buộc
+   cho Task 19 (integration RLS), Task 20 (E2E), và để chạy lại phần kiểm truy
+   vấn/ghi thật đã hoãn ở Task 5–6 (và sẽ hoãn ở Task 7, 9).
+6. **Resume vòng lặp `subagent-driven-development` từ Task 7.** Vào worktree:
+   `EnterWorktree path=.claude/worktrees/portal-giai-doan-2` (hoặc `cd` vào đó nếu
+   dùng CLI thô), đọc ledger `.superpowers/sdd/2026-09-08-portal-giai-doan-2-admin/progress.md`,
+   tiếp tục từ task đầu tiên chưa `complete`. Model: haiku cho task cơ học, sonnet
+   cho task tích hợp + mọi review.
+7. **Cuối kế hoạch:** final review toàn nhánh (model mạnh nhất) →
+   `finishing-a-development-branch` → merge `main` + push `origin/main`. Xoá worktree
+   (`ExitWorktree remove` hoặc `rm -rf`) + workspace SDD.
+
+**Việc dọn dẹp còn tồn (từ các phiên trước — chưa xử lý):**
+
+8. **`main` đang đi trước `origin/main`** — `origin/main` = `88c1cb0`; local `main`
+   có thêm `586cdd9`, `1328c49` (docs), `fd0722b` (spec GĐ2), `320a6e4` (plan GĐ2),
+   `88c1cb0`... cần commit/push khi thuận tiện (không chặn GĐ2 vì worktree base là
+   local `main`).
+9. **Đổi mật khẩu DB Supabase hosted** (bị lộ trong transcript phiên trước) —
+   Studio → Project Settings → Database → Reset. App không dùng mật khẩu này.
+10. **Nhập dữ liệu dự án thật** (khi có khách) — sau Giai đoạn 2 sẽ làm qua
+    `/portal/admin`, không cần Studio. Có thể xoá dự án demo "Trợ lý AI nội bộ — Demo".
+11. **(Tuỳ chọn)** `roleToScreen` (`src/lib/portal/session.ts`) vẫn chỉ dùng trong
+    unit test — Giai đoạn 2 không dùng tới; cân nhắc dọn bỏ ở Task 21 hoặc để lại.
 
 ## Quyết định quan trọng đã đưa ra (và lý do)
 
@@ -182,3 +261,51 @@ chưa bật (cần `npx supabase start` + `npx supabase db reset`).
   tháng ngoài (dayjs/date-fns) — giữ đúng nguyên tắc "không thêm dependency thừa
   cho site nhỏ" của dự án, Node 22 (full-ICU) đủ để định dạng `dd/mm/yyyy` theo
   giờ Việt Nam mà không cần thư viện.
+
+### Giai đoạn 2 (phiên 2026-09-08 "tiếp 3")
+
+- **Giai đoạn 2 KHÔNG có migration mới, KHÔNG sửa RLS** — mô hình 5 bảng và policy
+  `is_admin()` (cho mọi `INSERT/UPDATE/DELETE`) đã đủ từ Slice 1. Khu admin chỉ
+  thêm lớp DAL `requireAdmin()` (phòng thủ lớp 2 trên RLS) + trang + Server Action.
+  Chốt trong spec sau khi rà lại `20260828000003_portal_rls.sql`.
+- **`requireAdmin()` KHÔNG thêm điều kiện role vào `src/proxy.ts`** — proxy chỉ đọc
+  cookie, không biết `role` (phải query `profiles`). Phân biệt role là việc của DAL
+  (`requireAdmin` gọi ở đầu mỗi page `/portal/admin/**` + đầu mỗi Server Action),
+  RLS `is_admin()` là lớp cuối. Giữ đúng kiến trúc 3 lớp Slice 2.
+- **`/auth/callback` là chỗ DUY NHẤT phân luồng redirect theo role** (`admin` →
+  `/portal/admin`, còn lại → `/portal`). `/portal` KHÔNG auto-redirect admin đi đâu
+  cả — admin gõ `/portal` vẫn xem được danh sách mọi dự án ("xem như khách"), nếu
+  redirect thì `/portal` thành bất khả dụng với admin. Tách nhánh này thành hàm
+  thuần `postLoginPath(role)` để unit test (nhất quán với `roleToScreen` sẵn có).
+- **Tách `ActionState` + `initialActionState` sang `src/lib/portal/admin-action-state.ts`**
+  (file thường, KHÔNG `"use server"`) — file `"use server"` chỉ được export **async
+  function**; `export const initialActionState = {}` trong `admin-actions.ts` sẽ làm
+  `next build` fail. Plan gốc đặt nhầm trong `admin-actions.ts`; đã sửa plan
+  (`c3a0b8d`) + cập nhật import ở Task 11–15. `admin-actions.ts` chỉ `import type
+  { ActionState }`; component import `initialActionState` trực tiếp từ file mới.
+- **Ô nhập form (`input`/`textarea`/`select`) dùng `rounded-lg`** — `visual-style.md`
+  chỉ quy định bo góc cho card (`rounded-2xl`) và nút (pill), không nói về form
+  control. Chốt `rounded-lg` làm nhóm mới nhất quán trong khu admin, không đụng bo
+  góc card/nút hiện có.
+- **Thêm token `--danger` / `--danger-foreground` / `--success` vào `globals.css`**
+  (Task 10) — spec cấm hardcode hex, mà chưa có token cho trạng thái lỗi/thành công
+  của form. Thêm token thay vì dùng class `text-red-600` off-palette. Đây là sai
+  lệch có chủ đích so với "danh sách file §10" của spec (spec không nhắc `globals.css`).
+- **Hàm thuần tách khỏi file `"use server"`** — `admin-validation.ts` và
+  `milestone-order.ts` (`reorderMilestones`) phải là file riêng, không nhét trong
+  `admin-actions.ts`, cùng lý do "use server" chỉ export async. Spec §6.2/§9.1 yêu
+  cầu "hàm thuần test riêng" nhưng không đặt tên file → tách file là cách hợp lệ.
+- **Thực thi Giai đoạn 2 trong git worktree** (người dùng chọn, như Giai đoạn 1) —
+  `.claude/worktrees/portal-giai-doan-2`. **`EnterWorktree` mặc định branch từ
+  `origin/main` (`worktree.baseRef=fresh`)** mà `origin/main` đang sau local `main`
+  → worktree thiếu spec + plan; phải `git reset --hard main` trong worktree. Ghi
+  nhớ cho lần tạo worktree sau: hoặc push `main` trước, hoặc reset sau khi tạo.
+- **Model theo vai trò** — `haiku` cho task cơ học (hàm thuần + copy code từ brief:
+  Task 1–4), `sonnet` cho task tích hợp (truy vấn/action Supabase: Task 5–6) và
+  **mọi** task review. Tiết kiệm chi phí, giữ chất lượng.
+- **Phần test phụ thuộc Docker bị hoãn, không chặn** — Docker Desktop tắt suốt phiên.
+  Các bước "kiểm truy vấn/ghi thật bằng script tạm" (Bước 3 của Task 5, 6, và sẽ là
+  Task 7, 9), Task 19 (integration RLS), Task 20 (E2E) **hoãn** tới khi bật Docker.
+  Task cơ học/thuần + `tsc`/`lint`/`build` vẫn xác minh đầy đủ. Rủi ro: shape embed
+  Supabase trong `admin-queries.ts` chưa chạy thật (tsc chấp nhận cast nhưng runtime
+  chưa xác nhận).
