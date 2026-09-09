@@ -154,6 +154,25 @@ worktree, push `main` trước hoặc `git reset --hard main` trong worktree —
 định "EnterWorktree branch từ origin/main" bên dưới). Không còn ledger SDD cũ; bắt
 đầu lại vòng `subagent-driven-development` từ Task 7 theo plan `320a6e4`.
 
+### Phiên 2026-09-09 (tiếp) — Cài graphify commit hook
+
+`graphify hook install` (chạy từ env uv tool `C:\Users\The Dat\AppData\Roaming\uv\tools\graphifyy`):
+
+- **`.git/hooks/post-commit` + `post-checkout`** (không commit được, nằm trong `.git/`):
+  sau mỗi commit lấy `git diff HEAD~1`, chạy lại **chỉ AST extraction** trên file code
+  thay đổi, rebuild `graphify-out/graph.json` + `GRAPH_REPORT.md`. Chạy **detached**
+  (commit trả về ngay), log `~/.cache/graphify-rebuild.log`. Không LLM/Docker/API key.
+  Tự bỏ qua khi rebase/merge/cherry-pick và khi chỉ có file `graphify-out/` đổi.
+  Docs/ảnh hook bỏ qua — vẫn phải `graphify . --update` thủ công. Tắt 1 lần:
+  `GRAPHIFY_SKIP_HOOK=1 git commit`. Gỡ: `graphify hook uninstall`.
+- **Merge driver `graphify`** đăng ký trong `.git/config` (local, per-clone —
+  clone mới phải chạy lại `graphify hook install`): union-merge cho `graph.json`.
+- **`.gitattributes` (mới, đã commit)** — `graphify-out/graph.json merge=graphify`.
+  Chỉ khai báo tên driver; driver thật vẫn đăng ký riêng mỗi máy.
+- Khôi phục sidecar `graphify-out/.graphify_python` + `.graphify_root` (gitignored,
+  không commit) — không cần cho hook (`_PINNED` trong hook đã trỏ đúng python) nhưng
+  cần cho các lệnh `graphify query` / `--update` thủ công.
+
 ## Trạng thái từng phần
 
 | Phần | Trạng thái | Ghi chú |
@@ -170,6 +189,7 @@ worktree, push `main` trước hoặc `git reset --hard main` trong worktree —
 | Giai đoạn 2 — thực thi (Task 1–6 + stub) | ✅ Đã merge `main` (`e10f070`, 2026-09-09) | DAL `requireAdmin`/`postLoginPath`, `/auth/callback` theo role, `admin-validation`, `milestone-order`, `admin-queries`, `admin-actions` (CRUD dự án), stub `/portal/admin`. Task 1–6 review CLEAN (Task 5–6 ⚠ chưa kiểm DB thật). Worktree + branch đã xoá |
 | Giai đoạn 2 — Task 7–21 | ⬜ Chưa làm | actions mốc/nhật ký/khách, 7 component, page làm việc thật, integration RLS + E2E (cần Docker), docs + final review. Làm trên `main` hoặc worktree mới |
 | Knowledge graph (`graphify-out/`) | ✅ Xong (2026-09-09), đã commit `c6165bf` | 502 nodes. Cập nhật: `graphify . --update` từ repo root |
+| graphify commit hook | ✅ Cài (2026-09-09) | `post-commit`/`post-checkout` auto-rebuild AST sau mỗi commit (detached, không LLM). `.gitattributes` union-merge cho `graph.json` đã commit; merge driver đăng ký per-clone qua `graphify hook install` |
 
 ## Bước tiếp theo (phiên sau)
 
