@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ShieldCheck } from "lucide-react";
 import { getSessionProfile } from "@/lib/portal/session";
 import { signOut } from "@/lib/portal/actions";
 
@@ -16,6 +18,15 @@ export default async function PortalLayout({
             DNK <span className="text-accent">House</span>
           </span>
           <div className="flex items-center gap-4">
+            {profile?.role === "admin" && (
+              <Link
+                href="/portal/admin"
+                className="inline-flex items-center gap-1.5 rounded-full border border-accent px-4 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent hover:text-accent-foreground"
+              >
+                <ShieldCheck className="size-4" aria-hidden />
+                Khu quản trị
+              </Link>
+            )}
             {profile && (
               <span className="hidden text-sm text-muted sm:inline">
                 {profile.fullName ?? profile.email}
