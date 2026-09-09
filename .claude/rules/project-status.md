@@ -1,15 +1,18 @@
-# Trạng thái triển khai — Client Portal (Giai đoạn 1 xong · Giai đoạn 2 nền tảng đã merge)
+# Trạng thái triển khai — Client Portal (Giai đoạn 1 xong · Giai đoạn 2 code xong, chờ test Docker)
 
 **Cập nhật lần cuối: 2026-09-09.** Giai đoạn 1 đã hoàn tất từ trước (xem bên dưới).
-Giai đoạn 2 (khu quản trị `/portal/admin`) đã có **spec** (`fd0722b`) và **plan**
-21 task (`320a6e4`). **Task 1–6 + stub `/portal/admin` đã merge vào `main`** (merge
-`--no-ff` `e10f070`, 2026-09-09) và **push `origin/main`**; **worktree
-`.claude/worktrees/portal-giai-doan-2` + branch `worktree-portal-giai-doan-2` đã xoá.**
-Còn Task 7–21 (UI quản trị, duyệt khách, gán `project_members`, integration RLS +
-E2E) — làm ở phiên sau, trực tiếp trên `main` hoặc worktree mới. Docker vẫn tắt nên
-phần test DB tiếp tục **bị hoãn**. Cũng trong phiên: `graphify-out/` (knowledge
-graph của repo, 502 nodes) đã commit vào `main`. Chi tiết: mục "Phiên 2026-09-09"
-bên dưới.
+Giai đoạn 2 (khu quản trị `/portal/admin`) — spec `fd0722b`, plan 21 task `320a6e4`.
+**Task 1–6 + stub merge `main` (`e10f070`).** Phiên tiếp theo (2026-09-09):
+**Task 7–20 thực thi trực tiếp trên `main`** qua `subagent-driven-development` (20
+commit tính năng, mỗi task 1 subagent + 1 review độc lập — tất cả CLEAN, 1 vòng fix
+ở Task 12 + 2 vòng fix nhỏ ở Task 19–20). Khu admin đã đủ: 3 nhóm Server Action
+(dự án/mốc/nhật ký/khách), 7 component, 4 route làm việc thật, token `--danger`/
+`--success`. `tsc`/`lint`/`build` xanh xuyên suốt; unit 59/59.
+**Còn HOÃN (cần Docker):** chạy `admin-rls.test.ts` (Task 19, file đã viết) +
+`admin.spec.ts` E2E (Task 20, file đã viết) + kiểm truy vấn/ghi Supabase thật (Task
+5–9) + Task 21 Bước 5 (xác minh cuối) + `finishing-a-development-branch`. Task 21
+docs (rule/status/CLAUDE.md) đã cập nhật. Chi tiết: "Phiên 2026-09-09 (tiếp) —
+Giai đoạn 2 Task 7–21".
 
 ---
 
@@ -173,6 +176,50 @@ worktree, push `main` trước hoặc `git reset --hard main` trong worktree —
   không commit) — không cần cho hook (`_PINNED` trong hook đã trỏ đúng python) nhưng
   cần cho các lệnh `graphify query` / `--update` thủ công.
 
+### Phiên 2026-09-09 (tiếp) — Giai đoạn 2 Task 7–21 (`subagent-driven-development`, trên `main`)
+
+**Bối cảnh:** người dùng chọn thực thi **trực tiếp trên `main`** (không worktree —
+`origin/main` đã đồng bộ nên không lệch). Workspace SDD mới
+`.superpowers/sdd/2026-09-08-portal-giai-doan-2-admin/` (ledger cũ mất khi xoá
+worktree). Model: sonnet cho implementer + mọi review. Docker TẮT suốt phiên.
+
+**Đã làm (Task 7–20, 20 commit tính năng — mỗi task 1 implementer + 1 review độc lập):**
+
+| Task | Commit | Nội dung | Review |
+|---|---|---|---|
+| 7 | `4754c9d` | `admin-actions`: 5 action mốc (thêm/đổi tên/toggle/xoá/sắp thứ tự) | CLEAN |
+| 8 | `ff3bab6` | `admin-actions`: 3 action nhật ký (thêm/sửa/xoá) | CLEAN |
+| 9 | `717fb63` | `admin-actions`: `approveAndAssign` + `addMember`/`removeMember` | CLEAN |
+| 10 | `13dda9c` | token `--danger`/`--success` + `DeleteButton` + `AdminNav` | CLEAN |
+| 11 | `c0f7b95` | `ProjectForm` + trang `/portal/admin/projects/new` | CLEAN |
+| 12 | `a3ce471` + `16fa4d4` | `MilestoneManager` — review bắt lỗi set-state-in-render, fix bằng pattern so sánh prev-state | CLEAN sau fix |
+| 13 | `cd1c7fd` | `UpdateManager` — áp sẵn 2 pattern lint từ Task 12 | CLEAN |
+| 14 | `72b5ce3` | `MemberList` (Server Component, inline server action) | CLEAN |
+| 15 | `0ef7c64` | `ApproveAssignForm` | CLEAN |
+| 16 | `b7cec7a` | trang chủ `/portal/admin` 3 khu (thay stub) | CLEAN |
+| 17 | `496b194` | trang chi tiết `/portal/admin/projects/[id]` | CLEAN |
+| 18 | `b0af2e2` | trang duyệt khách `/portal/admin/pending/[profileId]` | CLEAN |
+| 19 | `27f1272` + `4b95ddd` | `admin-rls.test.ts` (5 case) — **chưa chạy**, tên test khớp assertion | CLEAN sau fix |
+| 20 | `b04c47f` + `109a9fd` | `admin.spec.ts` E2E + `EMAILS.admin` — **chưa chạy**, fix 2 selector | NEEDS_CHANGES → fix |
+
+Xác minh chung: `tsc=0`, `lint` 0 lỗi (2 warning cũ), `npm run build` xanh, unit
+**59/59** — chạy lại sau mỗi task.
+
+**Task 21:** docs (`portal-architecture.md`, file này, `CLAUDE.md`) đã cập nhật.
+Seed đủ persona (admin + pending + 3 client) — không sửa. **Bước 5 (xác minh cuối:
+`npm run test` + `test:e2e` + kiểm responsive) + `finishing-a-development-branch`
+HOÃN** — cần Docker.
+
+**Lỗi bắt được trong review (không lọt xuống `main`):**
+- Task 12/13: `if (state.ok) setEditing(false)` trong thân render — với `useActionState`,
+  `state` giữ `{ ok: true }` tới lần dispatch kế → ô sửa đóng oan lần sau. Lint dự án
+  chặn cả set-state-in-render lẫn setState-trong-useEffect → phải dùng pattern React
+  "adjust state during render" (so sánh `prev` state). Form reset qua `useEffect` +
+  `ref.reset()` (không phải setState nên hợp lệ).
+- Task 20: `getByRole("textbox").filter({hasText:""}).last()` (no-op filter, trúng
+  nhầm ô "Người đăng") + `getByRole("button",{name:"Lưu"})` khớp substring "Lưu thay
+  đổi" → scope vào `alphaRow` + `exact: true`.
+
 ## Trạng thái từng phần
 
 | Phần | Trạng thái | Ghi chú |
@@ -187,35 +234,46 @@ worktree, push `main` trước hoặc `git reset --hard main` trong worktree —
 | Môi trường test local (`.env.test`) | ✅ Xong, **đã commit** (`88c1cb0`) + push | `npm run test` + `npm run test:e2e` tự nạp `.env.test` → không cần đổi `.env.local`. Unit pass, `tsc` sạch; integration RLS + E2E chưa chạy lại (thiếu Docker) |
 | Giai đoạn 2 — spec + plan | ✅ Xong | Spec `fd0722b`, plan 21 task `320a6e4` (đều trên `main`) |
 | Giai đoạn 2 — thực thi (Task 1–6 + stub) | ✅ Đã merge `main` (`e10f070`, 2026-09-09) | DAL `requireAdmin`/`postLoginPath`, `/auth/callback` theo role, `admin-validation`, `milestone-order`, `admin-queries`, `admin-actions` (CRUD dự án), stub `/portal/admin`. Task 1–6 review CLEAN (Task 5–6 ⚠ chưa kiểm DB thật). Worktree + branch đã xoá |
-| Giai đoạn 2 — Task 7–21 | ⬜ Chưa làm | actions mốc/nhật ký/khách, 7 component, page làm việc thật, integration RLS + E2E (cần Docker), docs + final review. Làm trên `main` hoặc worktree mới |
+| Giai đoạn 2 — Task 7–18 (actions + component + route) | ✅ Xong, trên `main` (2026-09-09) | Task 7–9 action mốc/nhật ký/khách; Task 10–15 token + 7 component; Task 16–18 trang chủ 3 khu + chi tiết dự án + duyệt khách. 20 commit, mỗi task review CLEAN. `tsc`/`lint`/`build` xanh, unit 59/59. ⚠ truy vấn/ghi Supabase chưa kiểm DB thật (Docker tắt) |
+| Giai đoạn 2 — Task 19 (integration RLS) | 🟡 File viết xong (`27f1272`+`4b95ddd`) | `tests/integration/admin-rls.test.ts` — 5 case. **CHƯA CHẠY**: cần `npx supabase start && db reset && npm run test -- admin-rls` → kỳ vọng 5/5 |
+| Giai đoạn 2 — Task 20 (E2E) | 🟡 File viết xong (`b04c47f`+`109a9fd`) | `tests/e2e/admin.spec.ts` + `EMAILS.admin`. **CHƯA CHẠY**: cần `npx supabase db reset && npm run test:e2e`. Selector có thể phải chỉnh khi chạy thật (không nới lỏng assertion) |
+| Giai đoạn 2 — Task 21 (docs + xác minh cuối) | 🟡 Docs xong, xác minh HOÃN | Rule/status/CLAUDE.md đã cập nhật. Bước 5 (chạy full test + e2e + kiểm responsive) + `finishing-a-development-branch` chờ Docker |
 | Knowledge graph (`graphify-out/`) | ✅ Xong (2026-09-09), đã commit `c6165bf` | 502 nodes. Cập nhật: `graphify . --update` từ repo root |
 | graphify commit hook | ✅ Cài (2026-09-09) | `post-commit`/`post-checkout` auto-rebuild AST sau mỗi commit (detached, không LLM). `.gitattributes` union-merge cho `graph.json` đã commit; merge driver đăng ký per-clone qua `graphify hook install` |
 
 ## Bước tiếp theo (phiên sau)
 
-**Tiếp tục Giai đoạn 2 (ưu tiên):**
+**Hoàn tất Giai đoạn 2 (ưu tiên — chỉ còn phần cần Docker):**
 
-1. **Bật Docker Desktop** → `npx supabase start` + `npx supabase db reset`. Bắt buộc
-   cho Task 19 (integration RLS), Task 20 (E2E), và để chạy lại phần kiểm truy
-   vấn/ghi thật đã hoãn ở Task 5–6 (và sẽ hoãn ở Task 7, 9).
-2. **Bắt đầu lại vòng `subagent-driven-development` từ Task 7** theo plan `320a6e4`.
-   Worktree + ledger SDD cũ đã mất khi xoá nhánh — dựng workspace SDD mới. Làm trực
-   tiếp trên `main` hoặc worktree mới (nếu worktree: push `main` trước, hoặc
-   `git reset --hard main` trong worktree — xem quyết định "EnterWorktree" bên dưới).
-   Model: haiku cho task cơ học, sonnet cho task tích hợp + mọi review.
-3. **Cuối kế hoạch:** final review toàn nhánh → `finishing-a-development-branch` →
-   merge `main` + push. Nếu dùng worktree thì xoá worktree + workspace SDD sau merge.
+1. **Bật Docker Desktop** → `npx supabase start` + `npx supabase db reset`.
+2. **Chạy Task 21 Bước 5** (xác minh cuối toàn kế hoạch):
+   `npm run test` (unit 59 + integration RLS cũ + `admin-rls` 5) ·
+   `npm run test:e2e` (auth + dashboard + project-detail + admin) ·
+   `npx tsc --noEmit` · `npm run lint` · `npm run build` — kỳ vọng tất cả xanh.
+   Nếu `admin.spec.ts` selector không khớp markup thật → chỉnh selector (ưu tiên
+   `getByRole` neo chặt, KHÔNG nới lỏng assertion). Nếu shape embed Supabase trong
+   `admin-queries.ts` sai runtime → sửa mapping (rủi ro đã biết từ Task 5).
+3. **Kiểm thủ công** (spec §11): non-admin mở `/portal/admin*` → `/portal`; chưa
+   login → `/login`. Responsive `/portal/admin` + `projects/[id]` ở 375/768/1440
+   (skill/agent trình duyệt — xem [[mandatory-ui-checks]]).
+4. **Final review toàn nhánh Giai đoạn 2** rồi `finishing-a-development-branch` →
+   push `origin/main`. Xoá workspace SDD
+   `.superpowers/sdd/2026-09-08-portal-giai-doan-2-admin/`.
 
 **Việc dọn dẹp còn tồn:**
 
-4. **Đổi mật khẩu DB Supabase hosted** — mật khẩu đặt lúc tạo project bị lộ trong
+5. **Đổi mật khẩu DB Supabase hosted** — mật khẩu đặt lúc tạo project bị lộ trong
    transcript khi chạy `supabase db push --db-url`. Studio → Project Settings →
    Database → Reset. App không dùng mật khẩu này (chỉ `NEXT_PUBLIC_SUPABASE_*` +
    service key) nên đổi không ảnh hưởng.
-5. **Nhập dữ liệu dự án thật** (khi có khách) — sau Giai đoạn 2 sẽ làm qua
-   `/portal/admin`, không cần Studio. Có thể xoá dự án demo "Trợ lý AI nội bộ — Demo".
-6. **(Tuỳ chọn)** `roleToScreen` (`src/lib/portal/session.ts`) vẫn chỉ dùng trong
-   unit test — Giai đoạn 2 không dùng tới; cân nhắc dọn bỏ ở Task 21 hoặc để lại.
+6. **Nhập dữ liệu dự án thật** (khi có khách) — làm qua `/portal/admin`, không cần
+   Studio. Có thể xoá dự án demo "Trợ lý AI nội bộ — Demo".
+7. **(Tuỳ chọn)** `roleToScreen` (`src/lib/portal/session.ts`) vẫn chỉ dùng trong
+   unit test — Giai đoạn 2 không dùng tới; cân nhắc dọn bỏ hoặc để lại.
+8. **graphify-out/ working tree "bẩn" sau mỗi commit** — post-commit hook rebuild
+   `graph.json`/`GRAPH_REPORT.md`/... để lại thay đổi chưa commit (và file
+   `.graphify_labels.json.sig`, thư mục ngày). Không ảnh hưởng feature commit; chạy
+   `graphify . --update` + commit riêng, hoặc dọn `git checkout -- graphify-out/`.
 
 ## Quyết định quan trọng đã đưa ra (và lý do)
 
@@ -355,3 +413,28 @@ worktree, push `main` trước hoặc `git reset --hard main` trong worktree —
   vì gitignore, để clone về là `graphify query` / `--update` chạy ngay. Chỉ gitignore
   file máy-cụ-thể (`graphify-out/.gitignore`). Loại `.claude/skills/**` +
   `.superpowers/**` khỏi corpus (scaffolding, không phải nội dung dự án).
+
+### Phiên 2026-09-09 (tiếp) — Giai đoạn 2 Task 7–21
+
+- **Task 7–21 thực thi trực tiếp trên `main`, KHÔNG worktree** (người dùng chọn) —
+  `origin/main` đã đồng bộ local `main` nên không lặp lại vấn đề "worktree branch từ
+  `origin/main` cũ" của phiên trước. Mỗi feature commit thẳng lên `main`; workspace
+  SDD `.superpowers/sdd/...` (gitignored) chỉ để theo dõi tiến độ.
+- **Khu admin KHÔNG thêm lớp `NODE_ENV` / proxy check** — `requireAdmin()` (DAL, gọi
+  đầu mỗi page `/portal/admin/**` + đầu mỗi Server Action) + RLS `is_admin()` là đủ
+  2 lớp trên proxy. Proxy chỉ đọc cookie, không biết `role` (phải query `profiles`)
+  → phân biệt role là việc của DAL. Giữ nguyên kiến trúc 3 lớp spec §3.2.
+- **`useActionState` + đóng ô sửa: pattern "adjust state during render"** — không
+  dùng set-state trong thân render trực tiếp (lint `react-hooks` chặn) cũng không
+  setState trong `useEffect` (lint cũng chặn); dùng `const [prev, setPrev] =
+  useState(state); if (state !== prev) { setPrev(state); if (state.ok) ... }`. Form
+  reset thì `useEffect(() => { if (state.ok) ref.reset() }, [state])` hợp lệ vì
+  `.reset()` không phải setState. Áp cho `MilestoneManager` + `UpdateManager`.
+- **Test phụ thuộc Docker: viết file, chưa chạy, không chặn** — Docker tắt cả phiên.
+  `admin-rls.test.ts` (Task 19) + `admin.spec.ts` (Task 20) viết đầy đủ, `tsc`/`lint`
+  xanh, commit lên `main` nhưng **chưa chạy lần nào**. Task 21 Bước 5 + final review
+  + `finishing-a-development-branch` hoãn. Rủi ro còn treo: shape embed Supabase
+  trong `admin-queries.ts` chưa xác nhận runtime; selector E2E có thể phải chỉnh.
+- **Review giữa task bắt 3 lỗi trước khi lên `main`** (Task 12 set-state-in-render,
+  Task 20 hai selector sai) — xác nhận giá trị của vòng review độc lập mỗi task kể
+  cả khi implementer báo "copy nguyên văn brief" (brief tự nó có bug pattern).

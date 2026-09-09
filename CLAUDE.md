@@ -23,7 +23,7 @@ chỉ nạp khi làm việc trong thư mục tương ứng):
 - [`conventions.md`](.claude/rules/conventions.md) — quy ước đặt tên file/component, ảnh, placeholder
 - [`portal-architecture.md`](.claude/rules/portal-architecture.md) — kiến trúc client portal (route, 3 lớp bảo vệ, truy vấn)
 - [`portal-env-security.md`](.claude/rules/portal-env-security.md) — biến môi trường portal, cảnh báo bảo mật `E2E_TEST_LOGIN`
-- [`project-status.md`](.claude/rules/project-status.md) — trạng thái triển khai (Giai đoạn 1 xong; Giai đoạn 2 `/portal/admin` đang thực thi trong worktree `.claude/worktrees/portal-giai-doan-2`), bước tiếp theo, quyết định quan trọng
+- [`project-status.md`](.claude/rules/project-status.md) — trạng thái triển khai (Giai đoạn 1 xong; Giai đoạn 2 khu quản trị `/portal/admin` đã triển khai trên `main` — còn chạy test phụ thuộc Docker), bước tiếp theo, quyết định quan trọng
 - [`karpathy-guidelines.md`](.claude/rules/karpathy-guidelines.md) — chuẩn hành vi viết code chung (đơn giản, thay đổi có chủ đích, tiêu chí thành công có thể kiểm chứng)
 
 <!-- BEGIN:nextjs-agent-rules -->
