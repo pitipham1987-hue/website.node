@@ -56,10 +56,11 @@ test.describe("Khu quản trị /portal/admin (Giai đoạn 2)", () => {
     ).toContainText("Hoàn thành ngày");
 
     // Sửa tiêu đề mốc inline.
+    const alphaRow = page.locator("ol > li").filter({ hasText: "Mốc Alpha" });
     await page.getByText("Mốc Alpha").click();
-    const editInput = page.getByRole("textbox").filter({ hasText: "" }).last();
+    const editInput = alphaRow.getByRole("textbox");
     await editInput.fill("Mốc Alpha (đã sửa)");
-    await page.getByRole("button", { name: "Lưu" }).first().click();
+    await alphaRow.getByRole("button", { name: "Lưu", exact: true }).click();
     await expect(page.getByText("Mốc Alpha (đã sửa)")).toBeVisible();
 
     // Đăng 1 nhật ký.
