@@ -258,7 +258,7 @@ HOÃN** — cần Docker.
 | Giai đoạn 2 — smoke-test (dev trỏ hosted) | ✅ Một phần (2026-09-09) | 4 route `/portal/admin*` chưa login → proxy redirect `/login`, 0 lỗi. Luồng đã-login (CRUD/reorder/duyệt) người dùng tự kiểm qua Google OAuth thật |
 | Giai đoạn 2 — UX: link "Khu quản trị" ở header portal | ✅ Xong, `a1754d6` | Pill hiện khi `role === "admin"` trên `src/app/portal/layout.tsx` — admin xem giao diện khách có lối quay về `/portal/admin` |
 | Knowledge graph (`graphify-out/`) | ✅ Xong (2026-09-09), đã commit `c6165bf` | 502 nodes. Cập nhật: `graphify . --update` từ repo root |
-| graphify commit hook | ✅ Cài (2026-09-09) | `post-commit`/`post-checkout` auto-rebuild AST sau mỗi commit (detached, không LLM). `.gitattributes` union-merge cho `graph.json` đã commit; merge driver đăng ký per-clone qua `graphify hook install` |
+| graphify commit hook | ✅ Cài (2026-09-09) · ⚠ rebuild lỗi encoding trên Windows | `post-commit`/`post-checkout` auto-rebuild AST sau mỗi commit (detached, không LLM). `.gitattributes` union-merge cho `graph.json` đã commit; merge driver đăng ký per-clone qua `graphify hook install`. **Rebuild fail im lặng** khi có thay đổi topology (`charmap` codec, cp1252) — xem "Việc dọn dẹp" #8 |
 
 ## Bước tiếp theo (phiên sau)
 
@@ -293,9 +293,15 @@ HOÃN** — cần Docker.
 7. **(Tuỳ chọn)** `roleToScreen` (`src/lib/portal/session.ts`) vẫn chỉ dùng trong
    unit test — Giai đoạn 2 không dùng tới; cân nhắc dọn bỏ hoặc để lại.
 8. **graphify-out/ working tree "bẩn" sau mỗi commit** — post-commit hook rebuild
-   `graph.json`/`GRAPH_REPORT.md`/... để lại thay đổi chưa commit (và file
-   `.graphify_labels.json.sig`, thư mục ngày). Không ảnh hưởng feature commit; chạy
-   `graphify . --update` + commit riêng, hoặc dọn `git checkout -- graphify-out/`.
+   `graph.json`/`GRAPH_REPORT.md`/... có thể để lại thay đổi chưa commit. Không ảnh
+   hưởng feature commit; chạy `graphify . --update` + commit riêng, hoặc dọn
+   `git checkout -- graphify-out/`.
+   - **2026-09-10:** đã bỏ theo dõi thư mục sao lưu `graphify-out/2026-09-09/` (do
+     hook tạo, bị quét nhầm vào `62100f8`) + thêm ignore `YYYY-MM-DD/` (`daebf9a`).
+   - **Còn tồn:** hook rebuild **thất bại im lặng trên Windows** khi có thay đổi
+     topology thật — `'charmap' codec can't encode 'Ọ'` (console cp1252 không
+     ghi được tiếng Việt vào `GRAPH_REPORT.md`). Log: `~/.cache/graphify-rebuild.log`.
+     Chạy `--update` thủ công cần đặt `PYTHONUTF8=1` (hoặc `PYTHONIOENCODING=utf-8`).
 
 ## Quyết định quan trọng đã đưa ra (và lý do)
 
